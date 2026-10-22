@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chalk — a shared whiteboard for the room</title>
+<meta name="description" content="A shared whiteboard for the room. Everyone on the same Wi-Fi draws on the same board, live — no accounts, no internet, no telemetry.">
+<meta name="theme-color" content="#0f1115">
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--ink:#e7e9ee;--mut:#9aa3b2;--line:#252a34;--acc:#22c55e}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column}
+  header{max-width:1000px;width:100%;margin:0 auto;padding:14px 16px 6px}
+  h1{margin:0;font-size:20px}
+  .mut{color:var(--mut)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:8px 0}
+  label{display:block;font-size:11px;color:var(--mut);margin-bottom:3px}
+  input,select{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 9px;font:inherit}
+  button{background:var(--acc);color:#06210f;border:0;border-radius:9px;padding:8px 12px;font-weight:600;cursor:pointer;font:inherit}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  button[aria-pressed="true"]{outline:2px solid var(--acc)}
+  .swatch{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+  .swatch[aria-pressed="true"]{border-color:var(--ink);transform:scale(1.12)}
+  .status{font-size:12px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--mut);margin-right:5px;vertical-align:middle}
+  .dot.on{background:var(--acc)}
+  main{flex:1;min-height:0;max-width:1000px;width:100%;margin:0 auto;padding:0 16px 16px}
+  #boardWrap{position:relative;width:100%;height:100%;min-height:300px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
+  #board{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair;display:block}
+  footer{max-width:1000px;width:100%;margin:0 auto;padding:0 16px 14px;font-size:12px}
+  a{color:var(--acc)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Chalk</h1>
+  <p class="mut" id="tagline">A shared whiteboard for the room. Everyone on the same Wi-Fi draws on the same board, live.</p>
+
+  <div class="row">
+    <div style="flex:1;min-width:220px"><label for="host" data-i18n="host">Room host</label><input id="host" style="width:100%" value="http://localhost:8080"></div>
+    <div><label for="name" data-i18n="name">Your name</label><input id="name" size="10" value="guest"></div>
+    <button id="join" data-i18n="join">Join room</button>
+    <button id="leave" class="ghost" data-i18n="leave" hidden>Leave</button>
+    <span class="status"><span class="dot" id="dot"></span><span id="status">offline</span></span>
+  </div>
+
+  <div class="row" role="toolbar" aria-label="Board tools">
+    <div><label data-i18n="colour">Colour</label><span id="swatches"></span></div>
+    <div><label for="size" data-i18n="size">Brush</label><input id="size" type="range" min="1" max="24" value="3"></div>
+    <button id="eraser" class="ghost" data-i18n="eraser" aria-pressed="false">Eraser</button>
+    <button id="undo" class="ghost" data-i18n="undo">Undo</button>
+    <button id="clear" class="ghost" data-i18n="clear">Clear board</button>
+    <button id="png" class="ghost" data-i18n="savePng">Save PNG</button>
+    <div style="margin-left:auto"><label for="lang" data-i18n="language">Language</label>
+      <select id="lang"><option value="en">English</option><option value="hi">हिन्दी</option><option value="gu">ગુજરાતી</option></select>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="boardWrap"><canvas id="board"></canvas></div>
+</main>
+<footer class="mut">
+  <span data-i18n="foot">Works on a Wi-Fi network with the internet unplugged. Nothing leaves your network — no accounts, no telemetry.</span><br>
+  Built with Forge on the shared <a href="https://drsamonline.github.io/web-kit/">web-kit</a> and
+  <a href="https://drsamonline.github.io/lan-kit/">lan-kit</a>. MIT. © 2026 Dr Sohil Momin.
+</footer>
+
+<script src="web-kit.js"></script>
+<script src="lan-kit.js"></script>
+<script src="chalk.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var COLOURS = ["#e7e9ee", "#22c55e", "#38bdf8", "#f59e0b", "#ef4444", "#a78bfa", "#f472b6"];
+
+  /* App strings on top of the three languages web-kit ships. */
+  Loom.i18n.extend("en", { join:"Join room", leave:"Leave", undo:"Undo", clear:"Clear board",
+    colour:"Colour", size:"Brush", eraser:"Eraser", host:"Room host", name:"Your name",
+    savePng:"Save PNG", offline:"offline", connecting:"connecting…", online:"in the room",
+    foot:"Works on a Wi-Fi network with the internet unplugged. Nothing leaves your network — no accounts, no telemetry." });
+  Loom.i18n.extend("hi", { join:"कमरे में जुड़ें", leave:"छोड़ें", undo:"पूर्ववत", clear:"बोर्ड साफ़ करें",
+    colour:"रंग", size:"ब्रश", eraser:"इरेज़र", host:"रूम होस्ट", name:"आपका नाम",
+    savePng:"PNG सहेजें", offline:"ऑफ़लाइन", connecting:"जुड़ रहे हैं…", online:"कमरे में",
+    foot:"बिना इंटरनेट, सिर्फ़ वाई-फ़ाई पर चलता है। कुछ भी आपके नेटवर्क से बाहर नहीं जाता।" });
+  Loom.i18n.extend("gu", { join:"રૂમમાં જોડાઓ", leave:"છોડો", undo:"પૂર્વવત્", clear:"બોર્ડ સાફ કરો",
+    colour:"રંગ", size:"બ્રશ", eraser:"ઇરેઝર", host:"રૂમ હોસ્ટ", name:"તમારું નામ",
+    savePng:"PNG સાચવો", offline:"ઑફલાઇન", connecting:"જોડાઈ રહ્યા છીએ…", online:"રૂમમાં",
+    foot:"ઇન્ટરનેટ વગર, ફક્ત વાઇ-ફાઇ પર ચાલે છે. કંઈ પણ તમારા નેટવર્કની બહાર જતું નથી." });
+
+  Loom.theme.apply();
+
+  /* ---------- state ---------- */
+  var doc = Chalk.newDoc();
+  var client = null;
+  var myStrokes = [];          // ids I drew, newest last (for undo)
+  var drawing = null;          // { id, lastSent }
+  var erasing = false;
+  var colour = Loom.storage.get("chalk:colour", COLOURS[1]);
+  var size = Loom.storage.get("chalk:size", 3);
+
+  $("host").value = Loom.storage.get("chalk:host", Lan.hostUrl(8080));
+  $("name").value = Loom.storage.get("chalk:name", "guest");
+  $("lang").value = Loom.i18n.lang;
+
+  function T(k) { return Loom.i18n.t(k); }
+
+  function applyStrings() {
+    document.querySelectorAll("[data-i18n]").forEach(function (el) { el.textContent = T(el.getAttribute("data-i18n")); });
+    $("dot").className = "dot" + (client ? " on" : "");
+    setStatus(client ? T("online") : T("offline"));
+  }
+  function setStatus(s) { $("status").textContent = s; }
+
+  /* ---------- colours ---------- */
+  var sw = $("swatches");
+  COLOURS.forEach(function (c) {
+    var b = Loom.ui.el("button", { class: "swatch", type: "button", "aria-label": c, title: c });
+    b.style.background = c;
+    b.setAttribute("aria-pressed", String(c === colour));
+    b.addEventListener("click", function () {
+      colour = c; erasing = false; $("eraser").setAttribute("aria-pressed", "false");
+      Loom.storage.set("chalk:colour", c);
+      sw.querySelectorAll(".swatch").forEach(function (x) { x.setAttribute("aria-pressed", String(x.title === c)); });
+    });
+    sw.appendChild(b);
+  });
+  $("size").value = size;
+  $("size").addEventListener("input", function () { size = +this.value; Loom.storage.set("chalk:size", size); });
+
+  /* ---------- canvas ---------- */
+  var cv = $("board"), ctx = cv.getContext("2d"), dpr = 1, W = 0, H = 0;
+
+  function resize() {
+    var r = $("boardWrap").getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+  function bg() {
+    var v = getComputedStyle(document.documentElement).getPropertyValue("--card").trim();
+    return v || "#171a21";
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = bg(); ctx.fillRect(0, 0, W, H);
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    doc.strokes.forEach(function (s) {
+      var pts = s.points; if (!pts.length) return;
+      ctx.strokeStyle = s.color === "erase" ? bg() : s.color;
+      ctx.lineWidth = s.size;
+      if (pts.length === 1) { ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.size / 2, 0, 6.283); ctx.fill(); return; }
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      for (var i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+    });
+  }
+
+  function send(msg) {
+    if (!client) return;
+    try { client.send(msg); } catch (e) {}
+  }
+
+  function pos(ev) {
+    var r = cv.getBoundingClientRect();
+    return { x: Math.round((ev.clientX - r.left) * 10) / 10, y: Math.round((ev.clientY - r.top) * 10) / 10 };
+  }
+
+  cv.addEventListener("pointerdown", function (ev) {
+    cv.setPointerCapture(ev.pointerId);
+    var id = Chalk.newId();
+    var p = pos(ev);
+    drawing = { id: id, last: 0 };
+    myStrokes.push(id);
+    var msg = { t: "point", id: id, author: $("name").value || "guest",
+      color: erasing ? "erase" : colour, size: erasing ? Math.max(size, 12) : size, x: p.x, y: p.y };
+    Chalk.apply(doc, msg, { w: W, h: H });   // local: works offline too
+    send(msg);
+    draw();
+  });
+
+  cv.addEventListener("pointermove", function (ev) {
+    if (!drawing) return;
+    var p = pos(ev);
+    Chalk.apply(doc, { t: "point", id: drawing.id, x: p.x, y: p.y }, { w: W, h: H });
+    var now = Date.now();
+    if (now - drawing.last > 35) { drawing.last = now; send({ t: "point", id: drawing.id, x: p.x, y: p.y }); }
+    draw();
+  });
+
+  var lastPos = { x: 0, y: 0 };
+  function endStroke() {
+    if (!drawing) return;
+    /* flush the final point so the far end has the whole line */
+    send({ t: "point", id: drawing.id, x: lastPos.x, y: lastPos.y });
+    drawing = null;
+  }
+  cv.addEventListener("pointerup", function (ev) { lastPos = pos(ev); endStroke(); });
+  cv.addEventListener("pointercancel", function () { drawing = null; });
+  cv.addEventListener("pointerleave", function (ev) { if (drawing) { lastPos = pos(ev); endStroke(); } });
+
+  /* ---------- toolbar ---------- */
+  $("eraser").addEventListener("click", function () {
+    erasing = !erasing; this.setAttribute("aria-pressed", String(erasing));
+  });
+  $("undo").addEventListener("click", function () {
+    var id = myStrokes.pop();
+    if (!id) return;
+    Chalk.apply(doc, { t: "undo", id: id });
+    send({ t: "undo", id: id });
+    draw();
+  });
+  $("clear").addEventListener("click", function () {
+    if (!confirm("Clear the board for everyone?")) return;
+    Chalk.apply(doc, { t: "clear" });
+    myStrokes = [];
+    send({ t: "clear" });
+    draw();
+  });
+  $("png").addEventListener("click", function () {
+    var a = document.createElement("a");
+    a.href = cv.toDataURL("image/png");
+    a.download = "chalk-" + new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-") + ".png";
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+  $("lang").addEventListener("change", function () { Loom.i18n.setLang(this.value); applyStrings(); });
+
+  /* ---------- the room ---------- */
+  function join() {
+    if (client) return;
+    var url = $("host").value.trim().replace(/\/+$/, "");
+    if (!url) return;
+    Loom.storage.set("chalk:host", url);
+    Loom.storage.set("chalk:name", $("name").value);
+    setStatus(T("connecting"));
+    $("dot").className = "dot";
+    client = Lan.client({
+      url: url,
+      onOpen: function (h) {
+        $("dot").className = "dot on";
+        setStatus(T("online") + (h && h.room ? " · " + h.room : ""));
+        $("join").hidden = true; $("leave").hidden = false;
+        Loom.a11y.announce("Joined the room");
+      },
+      onMessage: function (m) {
+        /* ignore the echo of my own messages (they are already applied) */
+        if (m && m.id && myStrokes.indexOf(m.id) !== -1) return;
+        Chalk.apply(doc, m, { w: W, h: H });
+        draw();
+      },
+      onError: function () { $("dot").className = "dot"; setStatus(T("offline")); }
+    });
+  }
+  function leave() {
+    if (!client) return;
+    client.close(); client = null;
+    $("dot").className = "dot"; setStatus(T("offline"));
+    $("join").hidden = false; $("leave").hidden = true;
+  }
+  $("join").addEventListener("click", join);
+  $("leave").addEventListener("click", leave);
+
+  window.addEventListener("resize", resize);
+  applyStrings();
+  resize();
+})();
+</script>
+</body>
+</html>
