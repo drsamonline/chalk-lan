@@ -1,7 +1,7 @@
 # Chalk
 
 [![live](https://img.shields.io/badge/live-online-22c55e)](https://drsamonline.github.io/chalk-lan/)
-[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![license](https://img.shields.io/badge/license-PolyForm Noncommercial-blue)](LICENSE)
 [![tests](https://img.shields.io/badge/tests-38%20passed-22c55e)](test-node.js)
 [![release](https://img.shields.io/github/v/release/drsamonline/chalk-lan)](https://github.com/drsamonline/chalk-lan/releases)
 
