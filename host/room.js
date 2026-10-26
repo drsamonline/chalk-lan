@@ -8,7 +8,7 @@
  * device in the room and enter this host's address. The host keeps the last 500
  * messages, so a late joiner is caught up automatically.
  *
- * MIT License. (c) 2026 Dr Sohil Momin. Part of the Forge system.
+ * PolyForm Noncommercial License 1.0.0. (c) 2026 Dr Sohil Momin. Part of the Forge system.
  */
 "use strict";
 const os = require("os");
