@@ -289,5 +289,21 @@ window.__smokeTest = function () {
 };
 window.addEventListener("error", function () { window.__bootError = true; });
 </script>
+<style id="app-theme">
+  /* chalk-lan - its own palette, type and shape.
+     Keyed on data-theme so the in-app theme toggle still works; !important is
+     required because web-kit sets these as inline styles on <html>. */
+  html[data-theme="dark"]{--bg:#070d1a !important;--card:#09132a !important;--ink:#f0f4fe !important;--mut:#5d7dc4 !important;--line:#0d1c40 !important;--acc:#628ff1 !important;}
+  html[data-theme="light"]{--bg:#f5f8fe !important;--card:#ffffff !important;--ink:#0e1930 !important;--mut:#3863c1 !important;--line:#e0e9fc !important;--acc:#1e51c1 !important;}
+  html,body{font-family:"SF Pro Rounded", ui-rounded, "Nunito", system-ui, sans-serif !important;letter-spacing:0 !important;
+    background-image:radial-gradient(820px 360px at 50% -170px,
+      color-mix(in srgb, var(--acc) 16%, transparent), transparent 72%) !important;
+    background-repeat:no-repeat !important;background-attachment:fixed !important}
+  button,input,textarea,select{font-family:"SF Pro Rounded", ui-rounded, "Nunito", system-ui, sans-serif !important}
+  button,.btn{border-radius:14px !important}
+  input,textarea,select{border-radius:12px !important}
+  .card,[class*="card"]{border-radius:16px !important}
+  button:not(.ghost):not(.tab){background:var(--acc) !important}
+</style>
 </body>
 </html>
