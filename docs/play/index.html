@@ -30,11 +30,18 @@
   #board{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair;display:block}
   footer{max-width:1000px;width:100%;margin:0 auto;padding:0 16px 14px;font-size:12px}
   a{color:var(--acc)}
+  .top{display:flex;align-items:center;gap:10px;justify-content:space-between}
+  .ver{font-size:11px;font-weight:500;color:var(--mut);letter-spacing:.06em;vertical-align:middle}
+  #theme{font-size:12px;padding:5px 11px}
+  .stamp{display:block;margin-top:6px;font-size:11px;opacity:.75}
 </style>
 </head>
 <body>
 <header>
-  <h1>Chalk</h1>
+  <div class="top">
+    <h1>Chalk <span class="ver" id="appver">v1.1.0</span></h1>
+    <button id="theme" class="ghost" type="button">Dark</button>
+  </div>
   <p class="mut" id="tagline">A shared whiteboard for the room. Everyone on the same Wi-Fi draws on the same board, live.</p>
 
   <div class="row">
@@ -65,6 +72,7 @@
   <span data-i18n="foot">Works on a Wi-Fi network with the internet unplugged. Nothing leaves your network — no accounts, no telemetry.</span><br>
   Built with Forge on the shared <a href="https://drsamonline.github.io/web-kit/">web-kit</a> and
   <a href="https://drsamonline.github.io/lan-kit/">lan-kit</a>. PolyForm Noncommercial 1.0.0. © 2026 Dr Sohil Momin.
+  <span class="stamp">Chalk <span id="stampApp">1.1.0</span> · engine <span id="stampEngine">—</span> · served <span id="stampBuilt">—</span></span>
 </footer>
 
 <script src="web-kit.js"></script>
@@ -92,13 +100,18 @@
 
   Loom.theme.apply();
 
+  /* ?theme=dark|light pins the look for this visit without writing the choice to
+   * storage — a board projected on a wall is not the same board as a phone. */
+  var urlTheme = new URLSearchParams(location.search).get("theme");
+  if (urlTheme === "dark" || urlTheme === "light") Loom.theme.apply(urlTheme);
+
   /* ---------- state ---------- */
   var doc = Chalk.newDoc();
   var client = null;
   var myStrokes = [];          // ids I drew, newest last (for undo)
   var drawing = null;          // { id, lastSent }
   var erasing = false;
-  var colour = Loom.storage.get("chalk:colour", COLOURS[1]);
+  var colour = Loom.storage.get("chalk:colour", "") || ink();
   var size = Loom.storage.get("chalk:size", 3);
 
   $("host").value = Loom.storage.get("chalk:host", Lan.hostUrl(8080));
@@ -114,19 +127,32 @@
   }
   function setStatus(s) { $("status").textContent = s; }
 
-  /* ---------- colours ---------- */
+  /* ---------- colours ----------
+   * The first swatch is the board's own ink, so it is readable on whichever
+   * board the reader is on: chalk-white on the dark board, near-black on the
+   * light one. It is rebuilt when the theme changes. */
   var sw = $("swatches");
-  COLOURS.forEach(function (c) {
-    var b = Loom.ui.el("button", { class: "swatch", type: "button", "aria-label": c, title: c });
-    b.style.background = c;
-    b.setAttribute("aria-pressed", String(c === colour));
-    b.addEventListener("click", function () {
-      colour = c; erasing = false; $("eraser").setAttribute("aria-pressed", "false");
-      Loom.storage.set("chalk:colour", c);
-      sw.querySelectorAll(".swatch").forEach(function (x) { x.setAttribute("aria-pressed", String(x.title === c)); });
+  function paintSwatches() {
+    sw.querySelectorAll(".swatch").forEach(function (x) {
+      x.setAttribute("aria-pressed", String(x.title === colour));
     });
-    sw.appendChild(b);
-  });
+  }
+  function buildSwatches() {
+    var palette = [ink()].concat(COLOURS.slice(1));
+    sw.textContent = "";
+    palette.forEach(function (c) {
+      var b = Loom.ui.el("button", { class: "swatch", type: "button", "aria-label": c, title: c });
+      b.style.background = c;
+      b.setAttribute("aria-pressed", String(c === colour));
+      b.addEventListener("click", function () {
+        colour = c; erasing = false; $("eraser").setAttribute("aria-pressed", "false");
+        Loom.storage.set("chalk:colour", c);
+        paintSwatches();
+      });
+      sw.appendChild(b);
+    });
+  }
+  buildSwatches();
   $("size").value = size;
   $("size").addEventListener("input", function () { size = +this.value; Loom.storage.set("chalk:size", size); });
 
@@ -141,17 +167,23 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     draw();
   }
-  function bg() {
-    var v = getComputedStyle(document.documentElement).getPropertyValue("--card").trim();
-    return v || "#171a21";
+  function cssVar(name, fallback) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
   }
+  function bg() { return cssVar("--card", "#171a21"); }
+  function ink() { return cssVar("--ink", "#e7e9ee"); }
   function draw() {
+    if (sceneName && myStrokes.length === 0) doc = sceneDoc(sceneName);
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = bg(); ctx.fillRect(0, 0, W, H);
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     doc.strokes.forEach(function (s) {
       var pts = s.points; if (!pts.length) return;
-      ctx.strokeStyle = s.color === "erase" ? bg() : s.color;
+      /* Chalk.DEFAULT_COLOR means "the board's own ink", so the same stroke is
+       * chalk-white on the dark board and near-black on the light one. */
+      ctx.strokeStyle = s.color === "erase" ? bg()
+        : (s.color === Chalk.DEFAULT_COLOR ? ink() : s.color);
       ctx.lineWidth = s.size;
       if (pts.length === 1) { ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.size / 2, 0, 6.283); ctx.fill(); return; }
       ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
@@ -172,6 +204,7 @@
 
   cv.addEventListener("pointerdown", function (ev) {
     cv.setPointerCapture(ev.pointerId);
+    sceneName = null;                 /* from here the board is theirs */
     var id = Chalk.newId();
     var p = pos(ev);
     drawing = { id: id, last: 0 };
@@ -216,6 +249,7 @@
   });
   $("clear").addEventListener("click", function () {
     if (!confirm("Clear the board for everyone?")) return;
+    sceneName = null;
     Chalk.apply(doc, { t: "clear" });
     myStrokes = [];
     send({ t: "clear" });
@@ -264,9 +298,64 @@
   $("join").addEventListener("click", join);
   $("leave").addEventListener("click", leave);
 
+  /* ---------- theme ----------
+   * web-kit owns the "theme" key and the tokens; this app only adds the button
+   * beside the title. The landing page keeps its own key, so switching one
+   * surface never silently repaints the other. */
+  /* Read the board that is actually painted — that is the only answer that
+   * stays true when the theme came from the system or from ?theme=. */
+  function isDark() { return document.documentElement.getAttribute("data-theme") === "dark"; }
+  function paintTheme() {
+    var dark = isDark();
+    $("theme").textContent = dark ? "Light" : "Dark";
+    $("theme").setAttribute("aria-label", dark ? "Switch to the light board" : "Switch to the dark board");
+  }
+  $("theme").addEventListener("click", function () {
+    Loom.theme.set(isDark() ? "light" : "dark");
+    paintTheme();
+    if (!Loom.storage.get("chalk:colour", "")) colour = ink();   /* nobody has picked a chalk yet */
+    buildSwatches();
+    draw();                       /* the board background, and every erase stroke, follows the theme */
+  });
+
+  /* ---------- demo scenes ----------
+   * A board with something on it, drawn by the engine's own scene data, so the
+   * landing page can show the real app working and a screenshot is not an empty
+   * canvas. Never sent to a room: these strokes are not mine. */
+  var sceneName = null;
+  /* Scenes are laid out for a wide board. On a tall one, draw them into a 16:10
+   * box in the middle instead of stretching the drawing down the page — and lay
+   * them out again whenever the board changes size, because a board in a page
+   * can be measured before its frame has settled. */
+  function sceneDoc(name) {
+    var vh = Math.max(1, Math.round(Math.min(H, W * 0.62)));
+    var oy = Math.max(0, Math.round((H - vh) / 2));
+    var msgs = Chalk.scene(name, W, vh).map(function (m) {
+      if (!m.points) return m;
+      return { t: m.t, id: m.id, author: m.author, color: m.color, size: m.size,
+        points: m.points.map(function (p) { return { x: p.x, y: p.y + oy }; }) };
+    });
+    return Chalk.replay(msgs, { w: W, h: H });
+  }
+  function loadScene(name) {
+    if (!Chalk.scenes[name]) return;
+    sceneName = name;
+    doc = sceneDoc(name);
+    myStrokes = [];
+    draw();
+    if (name === "join") { $("host").focus(); Loom.a11y.announce("Enter the room host's address to join"); }
+    else Loom.a11y.announce("Demo board: " + name);
+  }
   window.addEventListener("resize", resize);
   applyStrings();
   resize();
+  paintTheme();
+  $("stampEngine").textContent = Chalk.version;
+  $("stampApp").textContent = $("appver").textContent.replace(/^v/, "");
+  try { $("stampBuilt").textContent = new Date(document.lastModified).toISOString().slice(0, 10); } catch (e) {}
+
+  var wanted = new URLSearchParams(location.search).get("demo");
+  if (wanted && Chalk.scenes[wanted]) loadScene(wanted);
 })();
 </script>
 

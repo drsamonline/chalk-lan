@@ -146,5 +146,34 @@ console.log("Chalk engine " + C.version + " — tests");
   ok("pathOf needs two points", C.pathOf({ points: [{ x: 0, y: 0 }] }) === "");
 })();
 
+/* ---- 13. demo scenes are real, valid boards ---- */
+(function () {
+  C.sceneNames.forEach(function (name) {
+    var msgs = C.scene(name, 800, 600);
+    var d = C.replay(msgs, { w: 800, h: 600 });
+    ok("scene '" + name + "' replays without throwing", Array.isArray(msgs));
+    if (name !== "join") ok("scene '" + name + "' draws something", C.stats(d).strokes > 0 && C.stats(d).points > 0);
+  });
+
+  var lesson = C.replay(C.scene("lesson", 800, 600), { w: 800, h: 600 });
+  ok("the lesson is drawn by more than one hand", C.stats(lesson).authors >= 3);
+  ok("the lesson keeps every point on the board", lesson.strokes.every(function (s) {
+    return s.points.every(function (p) { return p.x >= 0 && p.x <= 800 && p.y >= 0 && p.y <= 600; });
+  }));
+  ok("the lesson rubs something out", lesson.strokes.some(function (s) { return s.color === C.ERASE; }));
+  ok("scene ids are unique inside a scene", (function () {
+    var seen = {}, dup = false;
+    C.scene("lesson", 800, 600).forEach(function (m) { if (seen[m.id]) dup = true; seen[m.id] = 1; });
+    return !dup;
+  })());
+  ok("a scene scales to the phone width", (function () {
+    var small = C.replay(C.scene("lesson", 430, 860), { w: 430, h: 860 });
+    return small.strokes.length === lesson.strokes.length &&
+      small.strokes.every(function (s) { return s.points.every(function (p) { return p.x <= 430; }); });
+  })());
+  ok("an unknown scene is empty, not an error", C.scene("nope", 800, 600).length === 0);
+  ok("the join scene is a bare board", C.stats(C.replay(C.scene("join", 800, 600))).strokes === 0);
+})();
+
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

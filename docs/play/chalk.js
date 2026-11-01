@@ -11,7 +11,8 @@
  * zero-dependency, and runs unchanged in the browser (window.Chalk) and under
  * Node (module.exports), so it is unit-tested headlessly.
  *
- * Part of the Forge system. MIT License. (c) 2026 Dr Sohil Momin.
+ * Part of the Forge system. PolyForm Noncommercial License 1.0.0.
+ * (c) 2026 Dr Sohil Momin.
  */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
@@ -19,7 +20,7 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  var VERSION = "0.1.0";
+  var VERSION = "0.2.0";
 
   var DEFAULT_COLOR = "#e7e9ee";
   var ERASE = "erase";
@@ -186,8 +187,117 @@
     return pts.map(function (p, i) { return (i ? "L" : "M") + p.x + " " + p.y; }).join(" ");
   }
 
+  /* ---------- demo scenes ----------
+   * A scene is a plain list of protocol messages that draws a whole board, so
+   * the landing page can show the real app drawing something instead of an
+   * empty canvas, and a screenshot is worth looking at. Pure data — no DOM, no
+   * network, no clock — so it is tested headlessly like the rest of the engine.
+   *
+   * Points are written as fractions of the board (0..1) and scaled on the way
+   * out, so one scene works at 430px on a phone and 1280px on a laptop.
+   */
+  function scenePts(list, w, h) {
+    var W = isNum(w) && w > 0 ? w : 1000, H = isNum(h) && h > 0 ? h : 700;
+    return list.map(function (s) {
+      return {
+        t: "stroke", id: newId(), author: s.author, color: normColor(s.color), size: normSize(s.size),
+        points: (s.pts || []).map(function (p) {
+          return { x: Math.round(p[0] * W * 10) / 10, y: Math.round(p[1] * H * 10) / 10 };
+        })
+      };
+    });
+  }
+
+  /* A straight run, interpolated — chalk does not jump. */
+  function line(x0, y0, x1, y1, n) {
+    n = n || 10;
+    var out = [];
+    for (var i = 0; i <= n; i++) {
+      var t = i / n;
+      out.push([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]);
+    }
+    return out;
+  }
+
+  /* A hand-drawn rectangle: one continuous stroke that overshoots each corner,
+   * the way a person drawing on a board actually closes a box. */
+  function box(x0, y0, x1, y1) {
+    var ox = (x1 - x0) * 0.05, oy = (y1 - y0) * 0.07;
+    return line(x0 - ox, y0, x1 + ox, y0, 8)
+      .concat(line(x1, y0 - oy, x1, y1 + oy, 8))
+      .concat(line(x1 + ox, y1, x0 - ox, y1, 8))
+      .concat(line(x0, y1 + oy, x0, y0 - oy, 8));
+  }
+
+  /* An ellipse in radians — a circle round the answer. */
+  function arc(cx, cy, rx, ry, a0, a1, n) {
+    n = n || 24;
+    var out = [];
+    for (var i = 0; i <= n; i++) {
+      var a = a0 + (a1 - a0) * (i / n);
+      out.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]);
+    }
+    return out;
+  }
+
+  /* A shaft with a two-stroke head. */
+  function arrow(x0, y0, x1, y1) {
+    var head = 0.022, ang = Math.atan2(y1 - y0, x1 - x0);
+    var l = [x1 - Math.cos(ang - 0.5) * head, y1 - Math.sin(ang - 0.5) * head];
+    var r = [x1 - Math.cos(ang + 0.5) * head, y1 - Math.sin(ang + 0.5) * head];
+    return line(x0, y0, x1, y1, 10).concat([l, [x1, y1], r]);
+  }
+
+  /* A tick — someone in the room agreeing with the board. */
+  function tick(x, y) {
+    return line(x - 0.025, y + 0.02, x, y + 0.05, 4).concat(line(x, y + 0.05, x + 0.055, y - 0.05, 6));
+  }
+
+  var SCENES = {
+    /* A worked problem, three people annotating the same board. */
+    lesson: function (w, h) {
+      var A = "#628ff1", B = "#22c55e", C = "#f59e0b", K = "#e7e9ee";
+      return scenePts([
+        { author: "ana", color: K, size: 4, pts: line(0.09, 0.24, 0.46, 0.24, 12) },
+        { author: "ana", color: A, size: 4, pts: box(0.06, 0.30, 0.50, 0.46) },
+        { author: "ana", color: A, size: 3, pts: arrow(0.52, 0.38, 0.62, 0.38) },
+        { author: "bo", color: B, size: 3, pts: line(0.62, 0.42, 0.88, 0.42, 10) },
+        { author: "bo", color: B, size: 3, pts: tick(0.64, 0.52) },
+        { author: "cy", color: C, size: 4, pts: arc(0.74, 0.66, 0.075, 0.085, 0, 6.283, 28) },
+        { author: "cy", color: C, size: 3, pts: arrow(0.74, 0.57, 0.74, 0.50) },
+        { author: "ana", color: K, size: 3, pts: line(0.10, 0.68, 0.44, 0.68, 10) },
+        { author: "ana", color: "erase", size: 26, pts: line(0.12, 0.80, 0.40, 0.805, 8) },
+        { author: "bo", color: B, size: 3, pts: line(0.12, 0.80, 0.46, 0.80, 10) }
+      ], w, h);
+    },
+
+    /* The eraser: a line rubbed out and redrawn, a circle round what is left. */
+    erase: function (w, h) {
+      var K = "#e7e9ee", A = "#628ff1", B = "#22c55e", S = "#38bdf8";
+      return scenePts([
+        { author: "ana", color: K, size: 5, pts: line(0.10, 0.28, 0.54, 0.28, 14) },
+        { author: "ana", color: "erase", size: 30, pts: line(0.20, 0.285, 0.42, 0.28, 10) },
+        { author: "ana", color: K, size: 5, pts: line(0.10, 0.28, 0.34, 0.28, 8) },
+        { author: "bo", color: A, size: 3, pts: arrow(0.56, 0.28, 0.66, 0.28) },
+        { author: "bo", color: B, size: 3, pts: tick(0.68, 0.28) },
+        { author: "cy", color: S, size: 6, pts: arc(0.30, 0.62, 0.11, 0.15, 0, 6.283, 30) }
+      ], w, h);
+    },
+
+    /* A board nobody has touched yet — what a new joiner sees. */
+    join: function () { return []; }
+  };
+
+  function scene(name, w, h) {
+    var fn = SCENES[name];
+    return fn ? fn(w, h) : [];
+  }
+
   return {
     version: VERSION,
+    scenes: SCENES,
+    scene: scene,
+    sceneNames: ["lesson", "erase", "join"],
     DEFAULT_COLOR: DEFAULT_COLOR,
     ERASE: ERASE,
     DEFAULT_SIZE: DEFAULT_SIZE,
