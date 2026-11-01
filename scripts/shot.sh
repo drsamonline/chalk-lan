@@ -14,8 +14,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KIND="${1:-landing}"
 
 case "$KIND" in
-  app)     PAGE="$ROOT/docs/play/index.html"; QUERY="?demo=lesson&theme=dark"; NAME="app" ;;
-  landing) PAGE="$ROOT/docs/index.html";      QUERY="";            NAME="landing" ;;
+  app)     PAGE="$ROOT/docs/play/index.html"; QUERY="?demo=lesson&theme=dark"; NAME="app";     DESKTOP="1280,1000"; MOBILE="430,900" ;;
+  landing) PAGE="$ROOT/docs/index.html";      QUERY="";            NAME="landing"; DESKTOP="1280,1750"; MOBILE="430,1400" ;;
   *) echo "usage: shot.sh [landing|app]" >&2; exit 1 ;;
 esac
 
@@ -32,5 +32,5 @@ shot () { # width, height, outfile
   echo "wrote ${3#$ROOT/} ($(stat -c%s "$3") bytes)"
 }
 
-shot 1280 1750 "$ROOT/docs/assets/${NAME}-desktop.png"
-shot 430  1400 "$ROOT/docs/assets/${NAME}-mobile.png"
+shot ${DESKTOP%,*} ${DESKTOP#*,} "$ROOT/docs/assets/${NAME}-desktop.png"
+shot ${MOBILE%,*}  ${MOBILE#*,}  "$ROOT/docs/assets/${NAME}-mobile.png"

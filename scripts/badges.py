@@ -57,17 +57,23 @@ def badge(label, value, colour):
          CREAM, lw // 2, label, lw + vw // 2, value)
 
 
+SUITES = ["test-node.js", "test-host.js"]
+
+
 def test_count():
-    """The number the suite prints, not a number remembered from last time."""
-    out = subprocess.run([os.environ.get("NODE", "node"), "test-node.js"],
-                         cwd=ROOT, capture_output=True, text=True).stdout
-    m = re.search(r"(\d+) passed, (\d+) failed", out)
-    if not m:
-        raise SystemExit("could not read the test count from node test-node.js")
-    passed, failed = int(m.group(1)), int(m.group(2))
-    if failed:
-        raise SystemExit("%d test(s) failing — fix them before claiming a number" % failed)
-    return passed
+    """The number the suites print, not a number remembered from last time."""
+    total = 0
+    for suite in SUITES:
+        proc = subprocess.run([os.environ.get("NODE", "node"), suite],
+                              cwd=ROOT, capture_output=True, text=True)
+        m = re.search(r"(\d+) passed, (\d+) failed", proc.stdout)
+        if not m:
+            raise SystemExit("could not read the test count from node " + suite)
+        passed, failed = int(m.group(1)), int(m.group(2))
+        if failed or proc.returncode:
+            raise SystemExit("%s: %d failing — fix them before claiming a number" % (suite, failed))
+        total += passed
+    return total
 
 
 def licence():

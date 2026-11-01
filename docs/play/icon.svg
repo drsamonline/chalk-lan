@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Chalk">
+  <rect width="48" height="48" rx="11" fill="#0f2a23"/>
+  <g fill="none" stroke="#f2f0e2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 36l3-8 18-18 5 5-18 18z"/><path d="M30 13l5 5"/>
+  </g>
+  <g fill="none" stroke="#7ee0b0" stroke-width="2" stroke-linecap="round">
+    <path d="M10 43c6-2 10 1 16-1"/>
+  </g>
+</svg>
