@@ -78,7 +78,15 @@
   </div>
 
   <div class="row" role="toolbar" aria-label="Board tools">
-    <div><label data-i18n="tool">Tool</label><span class="tools" id="tools"></span></div>
+    <div><label data-i18n="tool">Tool</label><span class="tools" id="tools">
+      <button class="ghost" type="button" id="pen"    data-tool="pen"    data-i18n="pen">Pen</button>
+      <button class="ghost" type="button" id="line"   data-tool="line"   data-i18n="line">Line</button>
+      <button class="ghost" type="button" id="box"    data-tool="box"    data-i18n="box">Box</button>
+      <button class="ghost" type="button" id="circle" data-tool="circle" data-i18n="circle">Circle</button>
+      <button class="ghost" type="button" id="note"   data-tool="note"   data-i18n="note">Note</button>
+      <button class="ghost" type="button" id="eraser" data-tool="eraser" data-i18n="eraser">Eraser</button>
+      <button class="ghost" type="button" id="laser"  data-tool="laser"  data-i18n="laser">Laser</button>
+    </span></div>
     <div><label data-i18n="colour">Colour</label><span id="swatches"></span></div>
     <div><label for="size" data-i18n="size">Brush</label><input id="size" type="range" min="1" max="24" value="3" style="width:110px"></div>
     <div><label for="nib" data-i18n="nib">Nib</label><select id="nib"></select></div>
@@ -277,18 +285,18 @@
   }
 
   /* ---------- tools ---------- */
-  var TOOL_ORDER = ["pen", "line", "box", "circle", "note", "eraser", "laser"];
+  /* The tool buttons are in the markup — one per tool, with an id each, so they
+   * are addressable, translatable and keyboard-reachable without being built at
+   * runtime. This only wires them and shows which one is held. */
   function buildTools() {
-    var wrap = $("tools");
-    wrap.textContent = "";
-    TOOL_ORDER.forEach(function (t) {
-      var b = Loom.ui.el("button", {
-        class: "ghost", type: "button", "aria-pressed": String(tool === t),
-        title: T(t), "data-tool": t
-      });
-      b.textContent = T(t);
-      b.addEventListener("click", function () { setTool(t); });
-      wrap.appendChild(b);
+    document.querySelectorAll("#tools button").forEach(function (b) {
+      var t = b.getAttribute("data-tool");
+      b.setAttribute("aria-pressed", String(tool === t));
+      b.title = T(t);
+      if (!b.__wired) {
+        b.addEventListener("click", function () { setTool(t); });
+        b.__wired = true;
+      }
     });
   }
   function setTool(t) {
