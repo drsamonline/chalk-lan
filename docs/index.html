@@ -153,19 +153,6 @@
   .timeline .when{font-size:12px;color:var(--muted);margin-left:.55rem}
   .timeline p{margin:.35rem 0 0;color:var(--muted);font-size:14.5px;max-width:48rem}
 
-  /* ---- enhancements ---- */
-  .next{background:var(--paper-2);border-top:1px solid var(--line)}
-  .group{margin:0 0 2.2rem}
-  .group > h3{font:600 11.5px var(--sans);letter-spacing:.18em;text-transform:uppercase;
-              color:var(--accent);margin:0 0 .9rem}
-  .enh{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fit,minmax(16.5rem,1fr))}
-  .enh article{background:var(--paper);border:1px solid var(--line);border-radius:.8rem;padding:1.1rem}
-  .enh h4{font-family:var(--serif);font-weight:600;font-size:1.02rem;margin:.55rem 0 .3rem}
-  .enh p{margin:0;font-size:13.8px;color:var(--muted);line-height:1.55}
-  .keeps{display:inline-block;margin-top:.7rem;font:600 10px var(--sans);letter-spacing:.11em;
-         text-transform:uppercase;color:var(--accent);border-radius:999px;padding:.25rem .55rem;
-         border:1px solid color-mix(in srgb,var(--accent) 34%,transparent)}
-
   /* ---- run ---- */
   pre{background:var(--board);color:var(--on-board);border-radius:.7rem;padding:1.1rem 1.2rem;
       overflow:auto;font:13.5px/1.7 var(--mono);margin:0 0 1.1rem}
@@ -213,7 +200,7 @@
   <div class="wrap row">
     <a class="crumb" href="https://drsamonline.github.io/">← drsamonline</a>
     <div class="right">
-      <span class="chip">v1.1.0</span>
+      <span class="chip">v1.1.1</span>
       <button id="theme" class="toggle" type="button">Dark</button>
     </div>
   </div>
@@ -336,7 +323,7 @@
 
     <ol class="timeline">
       <li>
-        <span class="ver">1.1.0</span><span class="when">1 November 2026</span>
+        <span class="ver">1.1.1</span><span class="when">1 November 2026</span>
         <p>A landing page of its own, the app moved to <code>docs/play/</code>, and three demo scenes drawn by the
           engine so the board is never shown empty. The board gained a theme toggle beside its title, and the
           engine grew a pure, tested scene builder — the suite went from 38 to 50.</p>
@@ -355,101 +342,7 @@
   </div>
 </section>
 
-<section class="next" id="enhancements">
-  <div class="wrap">
-    <h2 class="sec">What's next, and what it will not cost</h2>
-    <p class="sec-note">Sixteen enhancements worth building, grouped by where they live. Each one adds no network
-      call and no third-party code: the engine stays pure JavaScript and every mechanic keeps a headless test.</p>
 
-    <div class="group">
-      <h3>On the board</h3>
-      <div class="enh">
-        <article><svg class="ico" aria-hidden="true"><use href="#i-pen"/></svg>
-          <h4>Pressure and nibs</h4>
-          <p>Variable-width strokes from <code>pointer.pressure</code> and tilt, with a chalk, marker and pen nib.
-            Canvas arithmetic only — no drawing library.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-shape"/></svg>
-          <h4>Shapes that snap</h4>
-          <p>Hold to straighten a line, then a box, then a circle. Hit-testing and snapping in the engine, so it is
-            unit-tested without a browser.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-note"/></svg>
-          <h4>Sticky notes and text</h4>
-          <p>A fifth message type carrying text items — the protocol already ignores unknown types, so old clients
-            stay in step instead of crashing.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-laser"/></svg>
-          <h4>Laser pointer</h4>
-          <p>A presenter's cursor that is deliberately <em>not</em> part of the document: drawn, faded after two
-            seconds, never replayed to a late joiner.</p><span class="keeps">offline · 0 deps</span></article>
-      </div>
-    </div>
-
-    <div class="group">
-      <h3>Into the room</h3>
-      <div class="enh">
-        <article><svg class="ico" aria-hidden="true"><use href="#i-qr"/></svg>
-          <h4>Join by room code or QR</h4>
-          <p>The host already knows its LAN address; print a 4-character code and a QR of the join URL in the
-            terminal. <code>Lan.roomCode()</code> exists and is unused.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-plug"/></svg>
-          <h4>Draw through a dropped host</h4>
-          <p>Queue strokes while the room is unreachable and flush them on reconnect, so a host restart in the
-            middle of a lesson does not lose the board.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-snapshot"/></svg>
-          <h4>Snapshot instead of replay</h4>
-          <p><code>toJSON()</code> already produces a bounded snapshot: send one of those to a late joiner instead
-            of 500 messages, and keep replay for the case where it is cheaper.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-cursor"/></svg>
-          <h4>Named cursors</h4>
-          <p>Every stroke already carries an author; a faint cursor per author turns "who drew that?" into a
-            glance. Same message type, same sanitisation.</p><span class="keeps">offline · 0 deps</span></article>
-      </div>
-    </div>
-
-    <div class="group">
-      <h3>Kept on the device</h3>
-      <div class="enh">
-        <article><svg class="ico" aria-hidden="true"><use href="#i-save"/></svg>
-          <h4>Save and reopen a board</h4>
-          <p><code>toJSON</code>/<code>fromJSON</code> are written and tested; wire them to a <code>.chalk.json</code>
-            file so a board survives the tab closing and can be handed on.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-image"/></svg>
-          <h4>SVG and PDF export</h4>
-          <p><code>pathOf()</code> already returns an SVG path per stroke, so a vector export is a page of string
-            joining — and print-to-PDF needs no library at all.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-db"/></svg>
-          <h4>Autosave in IndexedDB</h4>
-          <p><code>Loom.storage.put</code> is already in the shared kit: the board comes back after a reload with no
-            host and no network anywhere near it.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>
-          <h4>Replay a session</h4>
-          <p>Record the message log with timestamps and play it back like a recording — the engine already rebuilds
-            a board from a message list.</p><span class="keeps">offline · 0 deps</span></article>
-      </div>
-    </div>
-
-    <div class="group">
-      <h3>Installed, and for everyone</h3>
-      <div class="enh">
-        <article><svg class="ico" aria-hidden="true"><use href="#i-install"/></svg>
-          <h4>Installable PWA</h4>
-          <p>A manifest and a service worker with the HTML network-first and assets cache-first, so the board opens
-            on a phone that has never reached the page before.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-file"/></svg>
-          <h4>A single-file board</h4>
-          <p>Inline the three scripts into one HTML file, so a teacher can email the whiteboard and it still works
-            from <code>file://</code>.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-keyboard"/></svg>
-          <h4>Draw with the keyboard</h4>
-          <p>Arrow keys and space to draw, with a visible focus point on the canvas — the toolbar is already
-            keyboard-reachable and announced.</p><span class="keeps">offline · 0 deps</span></article>
-        <article><svg class="ico" aria-hidden="true"><use href="#i-lang"/></svg>
-          <h4>More languages</h4>
-          <p>web-kit ships EN, हिन्दी and ગુજરાતી; the app strings are one object per language, so Marathi, Bengali
-            and Tamil are a translation, not a refactor.</p><span class="keeps">offline · 0 deps</span></article>
-      </div>
-    </div>
-  </div>
-</section>
 
 <section id="run">
   <div class="wrap">
@@ -502,7 +395,7 @@ docs/play/index.html</pre>
       <a href="https://drsamonline.github.io/">drsamonline</a> estate · © 2026 Dr Sohil Momin ·
       <a href="https://github.com/drsamonline/chalk-lan">source</a> ·
       <a href="https://github.com/drsamonline/chalk-lan/blob/main/LICENSE">PolyForm Noncommercial 1.0.0</a></p>
-    <span class="stamp">v1.1.0 · served <span id="stamp">—</span></span>
+    <span class="stamp">v1.1.1 · served <span id="stamp">—</span></span>
   </div>
 </footer>
 

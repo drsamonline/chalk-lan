@@ -66,7 +66,8 @@ bounded at 5000), so a buggy or hostile peer on the LAN cannot break the board.
 
 ## What's next
 
-Sixteen enhancements worth building, grouped by where they live. Each one adds no network call and no
+Twenty-one enhancements worth building, grouped by where they live. They are kept here, not on
+the landing page: a page that sells the board should not read as a to-do list. Each one adds no network call and no
 third-party code: the engine stays pure JavaScript and every mechanic keeps a headless test.
 
 **On the board**
@@ -79,6 +80,10 @@ third-party code: the engine stays pure JavaScript and every mechanic keeps a he
   unknown types, so older clients stay in step instead of crashing.
 - **Laser pointer** — a presenter's cursor that is deliberately *not* part of the document: drawn,
   faded after two seconds, never replayed to a late joiner.
+- **Backgrounds and layers** — plain board, squared paper, a grid, a blackboard; drawn on the canvas,
+  so there is no image to fetch and no asset to ship.
+- **A chalk set for every eye** — a colour-blind-safe palette and a high-contrast chalk, chosen in the
+  toolbar and stored on the device.
 
 **Into the room**
 
@@ -90,6 +95,10 @@ third-party code: the engine stays pure JavaScript and every mechanic keeps a he
   joiner instead of 500 messages, and keep replay for when it is cheaper.
 - **Named cursors** — every stroke already carries an author; a faint cursor per author answers "who
   drew that?" at a glance. Same message type, same sanitisation.
+- **Host discovery** — find the room on the LAN by name (mDNS/Bonjour) instead of typing an IP; no
+  internet DNS is involved, and the typed address stays as the fallback.
+- **Several boards in one room** — a board id in every message, so a room can hold a lesson board and
+  a spare one without a second host.
 
 **Kept on the device**
 
@@ -101,6 +110,8 @@ third-party code: the engine stays pure JavaScript and every mechanic keeps a he
   after a reload with no host and no network anywhere near it.
 - **Replay a session** — record the message log with timestamps and play it back like a recording;
   the engine already rebuilds a board from a message list.
+- **Undo anyone, undo everything** — the host keeps the last 500 messages and `undo` takes a stroke id,
+  so an id from the history is all a moderator needs.
 
 **Installed, and for everyone**
 

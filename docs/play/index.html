@@ -39,7 +39,7 @@
 <body>
 <header>
   <div class="top">
-    <h1>Chalk <span class="ver" id="appver">v1.1.0</span></h1>
+    <h1>Chalk <span class="ver" id="appver">v1.1.1</span></h1>
     <button id="theme" class="ghost" type="button">Dark</button>
   </div>
   <p class="mut" id="tagline">A shared whiteboard for the room. Everyone on the same Wi-Fi draws on the same board, live.</p>
@@ -72,7 +72,7 @@
   <span data-i18n="foot">Works on a Wi-Fi network with the internet unplugged. Nothing leaves your network — no accounts, no telemetry.</span><br>
   Built with Forge on the shared <a href="https://drsamonline.github.io/web-kit/">web-kit</a> and
   <a href="https://drsamonline.github.io/lan-kit/">lan-kit</a>. PolyForm Noncommercial 1.0.0. © 2026 Dr Sohil Momin.
-  <span class="stamp">Chalk <span id="stampApp">1.1.0</span> · engine <span id="stampEngine">—</span> · served <span id="stampBuilt">—</span></span>
+  <span class="stamp">Chalk <span id="stampApp">1.1.1</span> · engine <span id="stampEngine">—</span> · served <span id="stampBuilt">—</span></span>
 </footer>
 
 <script src="web-kit.js"></script>
@@ -392,7 +392,7 @@ window.addEventListener("error", function () { window.__bootError = true; });
   button,.btn{border-radius:14px !important}
   input,textarea,select{border-radius:12px !important}
   .card,[class*="card"]{border-radius:16px !important}
-  button:not(.ghost):not(.tab){background:var(--acc) !important}
+  button:not(.ghost):not(.tab):not(.swatch){background:var(--acc) !important}
 </style>
 </body>
 </html>

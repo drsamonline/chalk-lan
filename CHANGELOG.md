@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.1 — 2026-11-01
+
+- **The landing page no longer advertises the roadmap.** A page that sells the board should not read
+  as a to-do list, so the "What's next" band is gone from `docs/index.html`; the enhancements — now
+  twenty-one, with backgrounds and layers, a colour-blind-safe chalk set, host discovery by name,
+  several boards in one room and undo-anyone added — live in the README only.
+- **The colour swatches show their colours again.** The app's theme block ends with
+  `button:not(.ghost):not(.tab){background:var(--acc)!important}`, which painted every swatch the accent
+  colour, so seven chalks looked like one. The rule now skips `.swatch`, and the first swatch — the
+  board's own ink — reads correctly on both boards.
+
 ## 1.1.0 — 2026-11-01
 
 - **A landing page of its own.** `docs/index.html` is now a designed page in a palette and type the
