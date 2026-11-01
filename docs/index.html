@@ -200,7 +200,7 @@
   <div class="wrap row">
     <a class="crumb" href="https://drsamonline.github.io/">← drsamonline</a>
     <div class="right">
-      <span class="chip">v1.1.1</span>
+      <span class="chip">v2.0.0</span>
       <button id="theme" class="toggle" type="button">Dark</button>
     </div>
   </div>
@@ -211,10 +211,10 @@
     <p class="eyebrow">shared whiteboard · same Wi-Fi · nothing else</p>
     <h1>Chalk<span class="tick">.</span></h1>
     <p class="sub">The board belongs to the room, not to the internet.</p>
-    <p class="lede">One laptop starts a room. Everyone on the same Wi-Fi opens the board and draws on it at the
-      same time — finger or mouse, seven colours, a brush, an eraser, undo, clear for everyone, save a PNG.
-      The strokes cross your own network and stop there. No account, no server, no internet, no telemetry,
-      nothing to install.</p>
+    <p class="lede">One laptop starts a room and prints a QR code; everyone on the same Wi-Fi scans it and draws on
+      the same board at the same time. Pen, straight lines, boxes, circles, sticky notes, an eraser, a laser
+      pointer, pressure from a stylus, several boards, six languages, and a PNG, SVG or PDF of the result.
+      The strokes cross your own network and stop there — no account, no server, no internet, no telemetry.</p>
     <div class="cta">
       <a class="btn primary" href="play/">Open the board →</a>
       <a class="btn" href="#run">Start a room</a>
@@ -262,14 +262,16 @@
     <div class="cards">
       <div class="card"><span class="n">01</span><h3>One board, everyone on it</h3>
         <p>Strokes appear on every screen as they are drawn — a point every 35&nbsp;ms, over Server-Sent Events on
-          your own LAN. A late joiner is caught up from the host's last 500 messages, so nobody walks in on a blank board.</p></div>
+          your own LAN. A late joiner gets one snapshot of the board rebuilt through the same engine, so nobody
+          walks in on a blank board and nothing has to be replayed message by message.</p></div>
       <div class="card"><span class="n">02</span><h3>Tools a room actually uses</h3>
-        <p>Seven chalks, a brush from 1 to 24&nbsp;px, an eraser, undo of your own last stroke, clear for everyone,
-          and a PNG of the board saved to the device. All of it in the browser, none of it online.</p></div>
+        <p>Three nibs and pressure from a stylus, lines and boxes and circles that snap, sticky notes, an eraser,
+          a laser pointer, undo of your own stroke — or <em>anyone's</em> — plus dotted, grid and blackboard
+          surfaces, and a colour-safe chalk set.</p></div>
       <div class="card"><span class="n">03</span><h3>It cannot be broken by a peer</h3>
-        <p>Every inbound message is sanitised: colours must be <code>#rrggbb</code> or the eraser sentinel, sizes are
-          clamped to 1–64, points to the board, strokes to 5000. A buggy or hostile device on the Wi-Fi cannot
-          crash the board.</p></div>
+        <p>Every inbound message is sanitised: colours must be <code>#rrggbb</code> or the eraser sentinel, sizes
+          are clamped to 1–64, text to 280 characters, points to the board, strokes to 5000. A buggy or hostile
+          device on the Wi-Fi cannot crash the board.</p></div>
     </div>
   </div>
 </section>
@@ -294,9 +296,9 @@
   <div class="wrap">
     <div class="stats">
       <div class="stat"><b>0</b><span>runtime dependencies</span></div>
-      <div class="stat"><b>50</b><span>headless tests, all passing</span></div>
-      <div class="stat"><b>4</b><span>message types on the wire</span></div>
-      <div class="stat"><b>3</b><span>languages: EN · हिन्दी · ગુજરાતી</span></div>
+      <div class="stat"><b>127</b><span>tests, engine and host</span></div>
+      <div class="stat"><b>7</b><span>message types on the wire</span></div>
+      <div class="stat"><b>6</b><span>languages, from English to தமிழ்</span></div>
       <div class="stat"><b>500</b><span>messages replayed to a late joiner</span></div>
     </div>
   </div>
@@ -322,6 +324,14 @@
     </div>
 
     <ol class="timeline">
+      <li>
+        <span class="ver">2.0.0</span><span class="when">1 November 2026</span>
+        <p>Every enhancement on the list, built: pressure and nibs, snapping shapes, sticky notes, a laser
+          pointer, four board surfaces, a colour-safe chalk set, undo-anyone, QR and room-code joining, a LAN
+          scan, snapshots for late joiners, a reconnect queue, named cursors, several boards, save and reopen,
+          SVG and PDF, autosave, session replay, an installable PWA, a single-file build, keyboard drawing and
+          six languages. The host now serves the board itself, so scanning its QR lands you in the room.</p>
+      </li>
       <li>
         <span class="ver">1.1.1</span><span class="when">1 November 2026</span>
         <p>The page stopped advertising the roadmap — what to build next belongs in the README, not on the
@@ -357,16 +367,22 @@
       <div>
         <pre><span class="c"># on one machine in the room — Node, no packages</span>
 node host/room.js
-<span class="c"># Chalk room host</span>
-<span class="c">#   room:  chalk</span>
-<span class="c">#   on the LAN (wlan0):  http://192.168.1.20:8080</span>
+<span class="c">  room   chalk        code  K7QP</span>
+<span class="c">  on the LAN        http://192.168.1.20:8080   (wlan0)</span>
+<span class="c">  ┌───────────────┐   ← scan this on any phone</span>
+<span class="c">  │  ▄▄▄▄▄ ▄ ▄▄▄  │     it serves the board and</span>
+<span class="c">  │  █   █ ▀▄█   │     joins the room for you</span>
+<span class="c">  │  ▀▀▀▀▀ ▄ ▀▄  │</span>
+<span class="c">  └───────────────┘</span>
 
-<span class="c"># then open the board on every device and join that address</span>
-<span class="c"># …or just open the file, with no host at all:</span>
-docs/play/index.html</pre>
+<span class="c"># …or open the file, with no host at all:</span>
+docs/play/index.html
+<span class="c"># …or the single file you can email:</span>
+docs/play/chalk-single.html</pre>
         <p class="note">The tests are headless and need nothing but Node:</p>
-        <pre>node test-node.js
-<span class="c">50 passed, 0 failed</span></pre>
+        <pre>node test-node.js      <span class="c"># the engine</span>
+node test-host.js      <span class="c"># the room, over HTTP</span>
+<span class="c">127 passed, 0 failed</span></pre>
       </div>
       <div>
         <h2 class="sec" style="font-size:1.15rem">What is in the repo</h2>
@@ -374,8 +390,10 @@ docs/play/index.html</pre>
           zero-dependency, runs in the browser and under Node, so the whole mechanic is unit-tested.</p>
         <p class="note"><code>docs/play/index.html</code> — the canvas, the toolbar and the join panel, thin on
           web-kit (storage, i18n, theme, a11y) and lan-kit (the room transport).</p>
-        <p class="note"><code>host/room.js</code> — the 3&nbsp;kB room host: SSE down, POST up, 500 messages of
-          history for whoever arrives late.</p>
+        <p class="note"><code>host/room.js</code> — the room host: SSE down, POST up, a snapshot for whoever
+          arrives late, a QR in the terminal, and the board itself served on the same port.</p>
+        <p class="note"><code>docs/play/qr.js</code> — a zero-dependency QR encoder, checked by decoding every
+          test string with two independent decoders.</p>
         <p class="note"><code>scripts/badges.py</code>, <code>scripts/icons.py</code>, <code>scripts/shot.sh</code> —
           the badges, the icons and the screenshots on this page are drawn locally, because a page that needs the
           network to describe itself has broken its own rule.</p>
@@ -401,7 +419,7 @@ docs/play/index.html</pre>
       <a href="https://drsamonline.github.io/">drsamonline</a> estate · © 2026 Dr Sohil Momin ·
       <a href="https://github.com/drsamonline/chalk-lan">source</a> ·
       <a href="https://github.com/drsamonline/chalk-lan/blob/main/LICENSE">PolyForm Noncommercial 1.0.0</a></p>
-    <span class="stamp">v1.1.1 · served <span id="stamp">—</span></span>
+    <span class="stamp">v2.0.0 · served <span id="stamp">—</span></span>
   </div>
 </footer>
 

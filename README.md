@@ -2,7 +2,7 @@
 
 <p>
   <a href="https://drsamonline.github.io/chalk-lan/"><img alt="live: online" src="docs/assets/badge-live.svg"></a>
-  <img alt="tests: 50 passing" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 127 passing" src="docs/assets/badge-tests.svg">
   <img alt="build: green" src="docs/assets/badge-build.svg">
   <a href="LICENSE"><img alt="licence: PolyForm NC 1.0.0" src="docs/assets/badge-licence.svg"></a>
   <img alt="offline: no network" src="docs/assets/badge-offline.svg">
@@ -16,7 +16,7 @@ No accounts, no internet, no telemetry — the strokes travel across your own ne
 [Landing page](https://drsamonline.github.io/chalk-lan/) ·
 [The rule](#what-it-must-not-do-and-does-not) ·
 [Releases](#releases) ·
-[What's next](#whats-next)
+[What is in it](#what-is-in-it)
 
 <!-- shot:start -->
 
@@ -24,112 +24,95 @@ No accounts, no internet, no telemetry — the strokes travel across your own ne
 
 <!-- shot:end -->
 
-One person starts a room on a laptop in the room; everyone else opens the board and joins it. Draw
-with a finger or a mouse, pick a colour and a brush, rub things out, undo your last stroke, clear the
-board for everyone, and save a PNG of the result. A late joiner is caught up from the host's history
-automatically. The app is three local scripts and the host is one small Node file — nothing is
-fetched, installed or phoned home.
+One person starts a room on a laptop in the room. The host prints a QR code and serves the board itself,
+so anyone who scans it is on the shared board with the room already joined — and anyone who prefers to
+type can enter the address or press **Find a room**. Draw with a finger, a mouse or a stylus; the strokes
+cross your own network and stop there. A late joiner gets one snapshot of the board, not a replay.
 
 ## What it does
 
-The app is **thin**: storage, languages, theming and accessibility come from **web-kit**; the room —
-SSE for server→client, plain POST for client→server, a room code and a LAN URL — comes from
+The app is **thin**: storage, languages, theming and accessibility come from **web-kit**; the room — SSE
+for server→client, plain POST for client→server, a room code, a snapshot for late joiners — comes from
 **lan-kit**. The only app-specific code is
 
-- `docs/play/chalk.js` — a small, pure, zero-dependency engine holding the board document, the
-  four-message protocol that keeps every device in step (`point`, `stroke`, `undo`, `clear`) and the
-  demo scenes the landing page draws. It runs unchanged in the browser and under Node, so the whole
-  mechanic is unit-tested headlessly;
-- `docs/play/index.html` — the canvas, the toolbar and the join panel, wired to web-kit and lan-kit;
-- `host/room.js` + `host/lan-host.js` — the tiny zero-dependency room host, which keeps the last 500
-  messages so a late joiner is caught up.
+- `docs/play/chalk.js` — the engine: the board document, the message protocol, the geometry a board needs
+  (hit testing, shapes, SVG export) and the demo scenes the landing page draws. Pure, zero-dependency,
+  and it runs unchanged in the browser and under Node, so the whole mechanic is tested headlessly;
+- `docs/play/index.html` — the canvas, the toolbar, the join panel, the note editor, the QR panel;
+- `docs/play/qr.js` — a zero-dependency QR encoder, so a room can be joined by pointing a phone at a
+  terminal;
+- `host/room.js` + `host/lan-host.js` — the room host, which also serves the board.
 
-Every message is sanitised on arrival (colour, size and points are validated and clamped, strokes are
+Every message is sanitised on arrival (colour, size, text and points are validated and clamped, strokes
 bounded at 5000), so a buggy or hostile peer on the LAN cannot break the board.
 
 | | |
 |---|---|
 | runtime dependencies | **0** |
-| headless tests | **50 passing** |
-| message types on the wire | **4** — `point`, `stroke`, `undo`, `clear` |
-| messages replayed to a late joiner | **500** |
-| languages | **3** — English, हिन्दी, ગુજરાતી |
+| tests | **127 passing** — 115 engine, 12 host |
+| message types on the wire | **7** — `point`, `stroke`, `note`, `undo`, `clear`, `cursor`, `snapshot` |
+| languages | **6** — English, हिन्दी, ગુજરાતી, मराठी, বাংলা, தமிழ் |
+| snapshot for a late joiner | **one message**, not 500 |
+
+## What is in it
+
+Everything that was on the list is built, and none of it costs a network call or a dependency.
+
+**On the board**
+
+- **Pressure and three nibs** — a point carries its pressure; chalk is soft and pressure-led, a marker is
+  flat, a pen is thin and crisp.
+- **Shapes that snap** — line, box and circle drag out as a preview and commit as one stroke; the corners
+  overshoot the way a hand does.
+- **Sticky notes** — a fifth message type carrying text items; notes move and edit by id.
+- **Laser pointer** — a cursor that is drawn, fades, and is never stored in the document.
+- **Four surfaces** — plain, dotted paper, a grid, a blackboard; all drawn on the canvas, no image fetched.
+- **Three chalk sets** — default, Okabe–Ito colour-safe, and high contrast.
+- **Undo anyone** — a mode where clicking a stroke or a note removes it, using a segment-aware hit test.
+
+**Into the room**
+
+- **Join by QR or room code** — the host serves the board, so its QR lands a phone in the room; the code
+  sits beside the status dot.
+- **Find a room** — `Lan.scan()` probes the device's own /24 for a Chalk host. No DNS, no internet.
+- **Snapshot instead of replay** — one `snapshot` message, rebuilt through the engine on the host.
+- **Draw through a dropped host** — messages that fail to send are queued and flushed in order on
+  reconnect.
+- **Named cursors** — every author's pointer, drawn with their name, fading on its own.
+- **Several boards in one room** — every message carries a board id; the engine ignores other boards.
+
+**Kept on the device**
+
+- **Save and reopen** — `.chalk.json` out and in, through the tested codec.
+- **SVG and PDF** — a vector export and print-to-PDF, both offline.
+- **Autosave** — the board is written to IndexedDB and comes back after a reload.
+- **Replay a session** — record the message log, then play it back with the gaps squeezed.
+
+**Installed, and for everyone**
+
+- **PWA** — a manifest and a service worker: HTML network-first, assets cache-first, cache name bumped per
+  release, so a new build is never hidden behind the old one.
+- **A single-file board** — `scripts/bundle.py` inlines everything into `docs/play/chalk-single.html`.
+- **Keyboard drawing** — arrows move the point, space starts and ends a stroke.
+- **Six languages.**
+
+What is *not* there, and is not pretended otherwise: no mDNS/Bonjour (browsers cannot broadcast on the
+LAN, so discovery is a subnet probe instead), no cloud, no iOS-native build, no voice or image import.
 
 ## What it must not do, and does not
 
-- **No internet.** The app is three local scripts; the room is a socket on your own LAN. Unplug the
-  WAN cable and the board keeps working.
+- **No internet.** The app is four local scripts; the room is a socket on your own LAN. Unplug the WAN
+  cable and the board keeps working.
 - **No accounts.** A name for the author label, stored on the device, and nothing else.
 - **No server of ours.** The host is a file you run yourself; there is no service to sign up to.
 - **No telemetry.** There is no analytics call in this repository to disable.
 - **No build step and no packages.** `npm install` is not part of running it.
 
-## What's next
-
-Twenty-one enhancements worth building, grouped by where they live. They are kept here, not on
-the landing page: a page that sells the board should not read as a to-do list. Each one adds no network call and no
-third-party code: the engine stays pure JavaScript and every mechanic keeps a headless test.
-
-**On the board**
-
-- **Pressure and nibs** — variable-width strokes from `pointer.pressure` and tilt, with chalk, marker
-  and pen nibs. Canvas arithmetic only.
-- **Shapes that snap** — hold to straighten a line, then a box, then a circle; snapping and hit-testing
-  live in the engine, so they are unit-tested without a browser.
-- **Sticky notes and text** — a fifth message type carrying text items. The protocol already ignores
-  unknown types, so older clients stay in step instead of crashing.
-- **Laser pointer** — a presenter's cursor that is deliberately *not* part of the document: drawn,
-  faded after two seconds, never replayed to a late joiner.
-- **Backgrounds and layers** — plain board, squared paper, a grid, a blackboard; drawn on the canvas,
-  so there is no image to fetch and no asset to ship.
-- **A chalk set for every eye** — a colour-blind-safe palette and a high-contrast chalk, chosen in the
-  toolbar and stored on the device.
-
-**Into the room**
-
-- **Join by room code or QR** — the host already knows its LAN address; print a 4-character code and a
-  QR of the join URL in the terminal. `Lan.roomCode()` exists and is unused.
-- **Draw through a dropped host** — queue strokes while the room is unreachable and flush on
-  reconnect, so a host restart mid-lesson does not lose the board.
-- **Snapshot instead of replay** — `toJSON()` already produces a bounded snapshot; send one to a late
-  joiner instead of 500 messages, and keep replay for when it is cheaper.
-- **Named cursors** — every stroke already carries an author; a faint cursor per author answers "who
-  drew that?" at a glance. Same message type, same sanitisation.
-- **Host discovery** — find the room on the LAN by name (mDNS/Bonjour) instead of typing an IP; no
-  internet DNS is involved, and the typed address stays as the fallback.
-- **Several boards in one room** — a board id in every message, so a room can hold a lesson board and
-  a spare one without a second host.
-
-**Kept on the device**
-
-- **Save and reopen a board** — `toJSON`/`fromJSON` are written and tested; wire them to a
-  `.chalk.json` file so a board survives the tab closing and can be handed on.
-- **SVG and PDF export** — `pathOf()` already returns an SVG path per stroke, so a vector export is
-  string joining, and print-to-PDF needs no library at all.
-- **Autosave in IndexedDB** — `Loom.storage.put` is already in the shared kit: the board comes back
-  after a reload with no host and no network anywhere near it.
-- **Replay a session** — record the message log with timestamps and play it back like a recording;
-  the engine already rebuilds a board from a message list.
-- **Undo anyone, undo everything** — the host keeps the last 500 messages and `undo` takes a stroke id,
-  so an id from the history is all a moderator needs.
-
-**Installed, and for everyone**
-
-- **Installable PWA** — a manifest and a service worker with the HTML network-first and assets
-  cache-first (and the cache name bumped every release), so the board opens on a phone that has never
-  reached the page before.
-- **A single-file board** — inline the three scripts into one HTML file, so a teacher can email the
-  whiteboard and it still works from `file://`.
-- **Draw with the keyboard** — arrow keys and space to draw, with a visible focus point on the canvas;
-  the toolbar is already keyboard-reachable and announced.
-- **More languages** — web-kit ships EN, हिन्दी and ગુજરાતી; the app strings are one object per
-  language, so Marathi, Bengali and Tamil are a translation, not a refactor.
-
 ## Releases
 
 Every push to `main` builds the three downloads below from `docs/play`, publishes the rolling
-`app-latest` release and deploys the page — all from the same commit, so the live demo and the
-released build cannot disagree.
+`app-latest` release and deploys the page — all from the same commit, so the live demo and the released
+build cannot disagree.
 
 | | download | what it is |
 |---|---|---|
@@ -137,19 +120,25 @@ released build cannot disagree.
 | <img src="docs/assets/icons/windows.svg" width="18" height="18" alt=""> **Windows** | [chalk-lan-portable.exe](https://github.com/drsamonline/chalk-lan/releases/download/app-latest/chalk-lan-portable.exe) | portable, no installer |
 | <img src="docs/assets/icons/linux.svg" width="18" height="18" alt=""> **Linux** | [chalk-lan-linux](https://github.com/drsamonline/chalk-lan/releases/download/app-latest/chalk-lan-linux) | single binary |
 
+<img src="docs/assets/icons/tag.svg" width="14" height="14" alt=""> **2.0.0** — 1 November 2026
+Every enhancement on the list, built: pressure and nibs, snapping shapes, notes, a laser, four surfaces,
+a colour-safe chalk set, undo-anyone, QR and room-code joining, a LAN scan, snapshots, a reconnect queue,
+named cursors, several boards, save and reopen, SVG and PDF, autosave, session replay, a PWA, a
+single-file build, keyboard drawing and six languages. The host now serves the board itself. Tests 50 → 127.
+
+<img src="docs/assets/icons/tag.svg" width="14" height="14" alt=""> **1.1.1** — 1 November 2026
+The landing page stopped advertising the roadmap, and the colour swatches show their own colours again.
+
 <img src="docs/assets/icons/tag.svg" width="14" height="14" alt=""> **1.1.0** — 1 November 2026
-A landing page of its own, the app moved to `docs/play/`, and three demo scenes drawn by the engine so
-the board is never shown empty. The board gained a theme toggle beside its title, a default chalk that
-follows the theme, and a build stamp in the footer; the engine grew a pure, tested scene builder, and
-the suite went from 38 to 50.
+A landing page of its own, the app moved to `docs/play/`, demo scenes drawn by the engine, a theme toggle
+and a build stamp. Tests 38 → 50.
 
 <img src="docs/assets/icons/tag.svg" width="14" height="14" alt=""> **1.0.0** — 25 October 2026
-PolyForm Noncommercial 1.0.0 everywhere, stated the same way in the licence, the headers and the
-README. A build now fails if the published demo is not the app itself.
+PolyForm Noncommercial 1.0.0 everywhere, stated the same way in the licence, the headers and the README.
 
 <img src="docs/assets/icons/tag.svg" width="14" height="14" alt=""> **0.1.0** — 23 October 2026
-First pass: the canvas board, the four-message protocol with sanitisation, the zero-dependency room
-host with history replay for late joiners, and the EXE/APK build workflow.
+First pass: the canvas board, the protocol with sanitisation, the zero-dependency room host, the build
+workflow.
 
 ## Run it
 
@@ -159,45 +148,51 @@ host with history replay for late joiners, and the EXE/APK build workflow.
 node host/room.js                 # room "chalk", port 8080
 ```
 
-It prints the address to use on the LAN, for example `http://192.168.1.20:8080`.
+It prints the room code, the LAN address and a QR code. That address serves the board, so any device on
+the same Wi-Fi can open it — or scan the code — and be in the room.
 
-**Join the board** — open the published page on any device on the same Wi-Fi:
-
-- **https://drsamonline.github.io/chalk-lan/** → *Open the board*, then paste the host address and tap
-  **Join room**;
-
-or run it locally: open `docs/play/index.html` in a browser (the engine `chalk.js`, the transport
-`lan-kit.js` and the shared runtime `web-kit.js` sit next to it, so it works from `file://` too).
+**Or open the board with no host at all:**
 
 ```bash
-node test-node.js      # 50 passed, 0 failed
+docs/play/index.html              # the app, from file://
+docs/play/chalk-single.html       # the same board in one email-able file
 ```
 
-`?demo=lesson|erase|join` opens the board on a demo scene, and `?theme=dark|light` pins the look for
-that visit without writing the choice to storage — both are how the screenshots and the landing page's
-frame are made.
+```bash
+node test-node.js      # the engine:  115 passed
+node test-host.js      # the room:     12 passed
+```
+
+`?demo=lesson|erase|join` opens the board on a demo scene and `?theme=dark|light` pins the look for that
+visit — both are how the screenshots and the landing page's frame are made.
 
 ## Layout
 
 ```
-docs/index.html         the landing page
-docs/play/index.html    the app — the canvas, the toolbar, the join panel
-docs/play/chalk.js      the engine: the document, the protocol, the demo scenes
-docs/play/web-kit.js    shared runtime: storage, i18n, theme, a11y, ui
-docs/play/lan-kit.js    the LAN room transport
-docs/assets/            screenshots, generated badges and icons
-host/room.js            the room host you run
-host/lan-host.js        SSE down, POST up, history for late joiners
-scripts/badges.py       draws docs/assets/badge-*.svg and checks each claim
-scripts/icons.py        draws docs/assets/icons/*.svg
-scripts/shot.sh         screenshots the landing page and the app
-test-node.js            the headless suite
+docs/index.html              the landing page
+docs/play/index.html         the app — canvas, toolbar, join panel, note editor, QR panel
+docs/play/chalk.js           the engine: document, protocol, geometry, scenes
+docs/play/qr.js              the QR encoder
+docs/play/web-kit.js         shared runtime: storage, i18n, theme, a11y, ui
+docs/play/lan-kit.js         the LAN transport, the health probe and the subnet scan
+docs/play/sw.js              the offline shell (network-first HTML, cache-first assets)
+docs/play/manifest.webmanifest
+docs/play/chalk-single.html  the whole board in one file, built by scripts/bundle.py
+docs/assets/                 screenshots, generated badges and icons
+host/room.js                 the room host you run
+host/lan-host.js             SSE down, POST up, snapshots, static board
+scripts/badges.py            draws docs/assets/badge-*.svg and checks each claim
+scripts/icons.py             draws docs/assets/icons/*.svg
+scripts/bundle.py            builds chalk-single.html
+scripts/shot.sh              screenshots the landing page and the app
+test-node.js                 the engine suite
+test-host.js                 the host suite, over real HTTP
 ```
 
-The badges and the icons are **generated, not fetched** — an offline-first board that needs the
-network to describe itself would have broken its own rule.
+The badges, the icons and the QR code are all **generated, not fetched** — an offline-first board that
+needs the network to describe itself would have broken its own rule.
 
 ## Licence
 
-PolyForm Noncommercial License 1.0.0 — see [LICENSE](LICENSE). The required notice is the first line
-of it. © 2026 Dr Sohil Momin. Part of the Forge system — apps open, orchestrator licensed.
+PolyForm Noncommercial License 1.0.0 — see [LICENSE](LICENSE). The required notice is the first line of
+it. © 2026 Dr Sohil Momin. Part of the Forge system — apps open, orchestrator licensed.

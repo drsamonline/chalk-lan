@@ -1,5 +1,55 @@
 # Changelog
 
+## 2.0.0 — 2026-11-01
+
+Every enhancement the README listed is now built, and none of them costs a
+network call or a dependency. The engine is still pure and still tested headlessly.
+
+**On the board**
+
+- **Pressure and nibs.** A point carries its pressure, and three nibs shape it: chalk is soft and
+  pressure-led, a marker is flat, a pen is thin and crisp.
+- **Shapes that snap.** Line, box and circle drag out as a preview and commit as one stroke on release;
+  `Chalk.shapePoints` draws them and the corners overshoot the way a hand does.
+- **Sticky notes.** A fifth message type carries text items; notes move and edit by id.
+- **Laser pointer.** A cursor message that is drawn, fades, and is never stored in the document.
+- **Backgrounds.** Plain, dotted paper, a grid, or a blackboard — drawn on the canvas, no image fetched.
+- **Chalk sets.** Default, Okabe–Ito colour-safe, and high contrast, chosen in the toolbar.
+- **Undo anyone.** A mode where clicking a stroke or a note removes it, using the engine's new
+  segment-aware hit test.
+
+**Into the room**
+
+- **Join by QR or code.** The host now serves the board itself, so the QR it prints lands a phone on the
+  shared board with the room already joined; the room code is shown beside the status dot.
+- **Find a room.** `Lan.scan()` probes the device's own /24 for a Chalk host — no DNS, no internet.
+- **Snapshot instead of replay.** A late joiner gets one `snapshot` message rebuilt through the engine,
+  not 500 replayed messages.
+- **Draw through a dropped host.** Messages that fail to send are queued and flushed in order on
+  reconnect.
+- **Named cursors.** Every author's pointer is drawn with their name and fades on its own.
+- **Several boards in one room.** Every message carries a board id, and the engine ignores other boards.
+
+**Kept on the device**
+
+- **Save and reopen.** `.chalk.json` out and in, through the tested codec.
+- **SVG and PDF.** A vector export (`Chalk.toSVG`) and print-to-PDF, both offline.
+- **Autosave.** The board is written to IndexedDB and comes back after a reload.
+- **Replay a session.** Record the message log, then play it back with the gaps squeezed.
+
+**Installed, and for everyone**
+
+- **PWA.** A manifest and a service worker: HTML network-first, assets cache-first, cache name bumped
+  per release, so a new build is never hidden behind the old one.
+- **A single-file board.** `scripts/bundle.py` inlines everything into
+  `docs/play/chalk-single.html` — one file to email.
+- **Keyboard drawing.** Arrows move the point, space starts and ends a stroke, and the point is visible.
+- **Six languages.** English, हिन्दी, ગુજરાતી, मराठी, বাংলা and தமிழ்.
+- **A verified QR encoder.** `docs/play/qr.js` is a zero-dependency encoder; every test string is
+  decoded back with two independent decoders before release, and the host prints one in the terminal.
+
+Tests went from 50 to 127: the engine suite plus a host suite that speaks to a real server over HTTP.
+
 ## 1.1.1 — 2026-11-01
 
 - **The landing page no longer advertises the roadmap.** A page that sells the board should not read

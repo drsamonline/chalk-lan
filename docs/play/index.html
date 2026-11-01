@@ -6,97 +6,178 @@
 <title>Chalk — a shared whiteboard for the room</title>
 <meta name="description" content="A shared whiteboard for the room. Everyone on the same Wi-Fi draws on the same board, live — no accounts, no internet, no telemetry.">
 <meta name="theme-color" content="#0f1115">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
   :root{--bg:#0f1115;--card:#171a21;--ink:#e7e9ee;--mut:#9aa3b2;--line:#252a34;--acc:#22c55e}
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column}
-  header{max-width:1000px;width:100%;margin:0 auto;padding:14px 16px 6px}
+  header{max-width:1100px;width:100%;margin:0 auto;padding:14px 16px 6px}
   h1{margin:0;font-size:20px}
   .mut{color:var(--mut)}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:8px 0}
   label{display:block;font-size:11px;color:var(--mut);margin-bottom:3px}
-  input,select{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 9px;font:inherit}
+  input,select,textarea{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 9px;font:inherit}
   button{background:var(--acc);color:#06210f;border:0;border-radius:9px;padding:8px 12px;font-weight:600;cursor:pointer;font:inherit}
   button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
-  button[aria-pressed="true"]{outline:2px solid var(--acc)}
+  button[aria-pressed="true"]{outline:2px solid var(--acc);outline-offset:1px}
+  button:disabled{opacity:.45;cursor:default}
   .swatch{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
   .swatch[aria-pressed="true"]{border-color:var(--ink);transform:scale(1.12)}
-  .status{font-size:12px}
-  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--mut);margin-right:5px;vertical-align:middle}
+  .status{font-size:12px;display:flex;align-items:center;gap:6px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--mut)}
   .dot.on{background:var(--acc)}
-  main{flex:1;min-height:0;max-width:1000px;width:100%;margin:0 auto;padding:0 16px 16px}
+  .chip{font-size:11px;letter-spacing:.08em;border:1px solid var(--line);border-radius:999px;padding:2px 7px;color:var(--mut)}
+  main{flex:1;min-height:0;max-width:1100px;width:100%;margin:0 auto;padding:0 16px 16px}
   #boardWrap{position:relative;width:100%;height:100%;min-height:300px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
   #board{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair;display:block}
-  footer{max-width:1000px;width:100%;margin:0 auto;padding:0 16px 14px;font-size:12px}
+  #board:focus-visible{outline:2px solid var(--acc);outline-offset:-4px}
+  footer{max-width:1100px;width:100%;margin:0 auto;padding:0 16px 14px;font-size:12px}
   a{color:var(--acc)}
   .top{display:flex;align-items:center;gap:10px;justify-content:space-between}
+  .top-right{display:flex;align-items:center;gap:6px}
   .ver{font-size:11px;font-weight:500;color:var(--mut);letter-spacing:.06em;vertical-align:middle}
-  #theme{font-size:12px;padding:5px 11px}
   .stamp{display:block;margin-top:6px;font-size:11px;opacity:.75}
+  .tools{display:flex;gap:4px;flex-wrap:wrap}
+  .tools button{font-size:12.5px;padding:6px 10px}
+  .sep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
+  .actions button{font-size:12.5px;padding:6px 10px}
+  #noteEditor{position:absolute;z-index:5;display:none;background:var(--card);border:1px solid var(--acc);border-radius:10px;padding:6px;width:190px}
+  #noteEditor textarea{width:100%;height:56px;resize:none;border:0;background:transparent;padding:0;font:13px/1.4 system-ui,sans-serif}
+  #qrPanel{position:absolute;inset:auto 12px 12px auto;z-index:6;background:#fff;border-radius:10px;padding:10px;display:none;box-shadow:0 20px 50px -20px rgba(0,0,0,.7)}
+  #qrPanel svg{display:block;width:180px;height:180px}
+  #qrPanel .cap{font-size:10.5px;color:#333;text-align:center;margin-top:6px;word-break:break-all}
+  #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--card);border:1px solid var(--line);
+         border-radius:999px;padding:8px 16px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+  #toast.show{opacity:1}
+  @media (max-width:640px){ .actions button{font-size:12px;padding:6px 8px} }
 </style>
 </head>
 <body>
 <header>
   <div class="top">
-    <h1>Chalk <span class="ver" id="appver">v1.1.1</span></h1>
-    <button id="theme" class="ghost" type="button">Dark</button>
+    <h1>Chalk <span class="ver" id="appver">v2.0.0</span></h1>
+    <div class="top-right">
+      <label for="boardSel" style="margin:0"><span class="mut" style="font-size:11px">Board</span></label>
+      <select id="boardSel" style="padding:5px 8px"></select>
+      <button id="newBoard" class="ghost" style="padding:5px 9px;font-size:12px" data-i18n="newBoard">+ board</button>
+      <button id="theme" class="ghost" style="font-size:12px;padding:5px 11px">Dark</button>
+    </div>
   </div>
-  <p class="mut" id="tagline">A shared whiteboard for the room. Everyone on the same Wi-Fi draws on the same board, live.</p>
+  <p class="mut" id="tagline" style="margin:4px 0 0;font-size:13px" data-i18n="tagline">A shared whiteboard for the room. Everyone on the same Wi-Fi draws on the same board, live.</p>
 
   <div class="row">
-    <div style="flex:1;min-width:220px"><label for="host" data-i18n="host">Room host</label><input id="host" style="width:100%" value="http://localhost:8080"></div>
-    <div><label for="name" data-i18n="name">Your name</label><input id="name" size="10" value="guest"></div>
+    <div style="flex:1;min-width:200px"><label for="host" data-i18n="host">Room host</label><input id="host" style="width:100%" value="http://localhost:8080"></div>
+    <div><label for="name" data-i18n="name">Your name</label><input id="name" size="9" value="guest"></div>
     <button id="join" data-i18n="join">Join room</button>
     <button id="leave" class="ghost" data-i18n="leave" hidden>Leave</button>
-    <span class="status"><span class="dot" id="dot"></span><span id="status">offline</span></span>
+    <button id="find" class="ghost" data-i18n="find">Find a room</button>
+    <button id="qrBtn" class="ghost" data-i18n="qr">QR</button>
+    <span class="status"><span class="dot" id="dot"></span><span id="status">offline</span><span id="code" class="chip" hidden></span></span>
   </div>
 
   <div class="row" role="toolbar" aria-label="Board tools">
+    <div><label data-i18n="tool">Tool</label><span class="tools" id="tools"></span></div>
     <div><label data-i18n="colour">Colour</label><span id="swatches"></span></div>
-    <div><label for="size" data-i18n="size">Brush</label><input id="size" type="range" min="1" max="24" value="3"></div>
-    <button id="eraser" class="ghost" data-i18n="eraser" aria-pressed="false">Eraser</button>
-    <button id="undo" class="ghost" data-i18n="undo">Undo</button>
-    <button id="clear" class="ghost" data-i18n="clear">Clear board</button>
-    <button id="png" class="ghost" data-i18n="savePng">Save PNG</button>
+    <div><label for="size" data-i18n="size">Brush</label><input id="size" type="range" min="1" max="24" value="3" style="width:110px"></div>
+    <div><label for="nib" data-i18n="nib">Nib</label><select id="nib"></select></div>
+    <div><label for="palette" data-i18n="chalks">Chalks</label><select id="palette"></select></div>
+    <div><label for="bg" data-i18n="background">Board</label><select id="bg"></select></div>
+  </div>
+
+  <div class="row actions">
+    <button id="undo" data-i18n="undo">Undo</button>
+    <button id="undoAny" class="ghost" aria-pressed="false" data-i18n="undoAny">Undo any</button>
+    <button id="clear" class="ghost" data-i18n="clear">Clear</button>
+    <span class="sep"></span>
+    <button id="png" class="ghost">PNG</button>
+    <button id="svg" class="ghost">SVG</button>
+    <button id="print" class="ghost" data-i18n="pdf">PDF</button>
+    <button id="save" class="ghost" data-i18n="save">Save</button>
+    <button id="openBtn" class="ghost" data-i18n="open">Open</button>
+    <input id="file" type="file" accept=".json,application/json" hidden>
+    <span class="sep"></span>
+    <button id="record" class="ghost" aria-pressed="false" data-i18n="record">Record</button>
+    <button id="replay" class="ghost" data-i18n="replay">Replay</button>
     <div style="margin-left:auto"><label for="lang" data-i18n="language">Language</label>
-      <select id="lang"><option value="en">English</option><option value="hi">हिन्दी</option><option value="gu">ગુજરાતી</option></select>
+      <select id="lang"></select>
     </div>
   </div>
 </header>
 
 <main>
-  <div id="boardWrap"><canvas id="board"></canvas></div>
+  <div id="boardWrap">
+    <canvas id="board" tabindex="0" aria-label="The shared board"></canvas>
+    <div id="noteEditor"><textarea id="noteText" maxlength="280" aria-label="Note text"></textarea></div>
+    <div id="qrPanel"><div id="qrSvg"></div><div class="cap" id="qrCap"></div></div>
+  </div>
 </main>
 <footer class="mut">
   <span data-i18n="foot">Works on a Wi-Fi network with the internet unplugged. Nothing leaves your network — no accounts, no telemetry.</span><br>
   Built with Forge on the shared <a href="https://drsamonline.github.io/web-kit/">web-kit</a> and
   <a href="https://drsamonline.github.io/lan-kit/">lan-kit</a>. PolyForm Noncommercial 1.0.0. © 2026 Dr Sohil Momin.
-  <span class="stamp">Chalk <span id="stampApp">1.1.1</span> · engine <span id="stampEngine">—</span> · served <span id="stampBuilt">—</span></span>
+  <span class="stamp">Chalk <span id="stampApp">2.0.0</span> · engine <span id="stampEngine">—</span> · served <span id="stampBuilt">—</span></span>
 </footer>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script src="web-kit.js"></script>
 <script src="lan-kit.js"></script>
 <script src="chalk.js"></script>
+<script src="qr.js"></script>
 <script>
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var COLOURS = ["#e7e9ee", "#22c55e", "#38bdf8", "#f59e0b", "#ef4444", "#a78bfa", "#f472b6"];
 
-  /* App strings on top of the three languages web-kit ships. */
-  Loom.i18n.extend("en", { join:"Join room", leave:"Leave", undo:"Undo", clear:"Clear board",
-    colour:"Colour", size:"Brush", eraser:"Eraser", host:"Room host", name:"Your name",
-    savePng:"Save PNG", offline:"offline", connecting:"connecting…", online:"in the room",
-    foot:"Works on a Wi-Fi network with the internet unplugged. Nothing leaves your network — no accounts, no telemetry." });
-  Loom.i18n.extend("hi", { join:"कमरे में जुड़ें", leave:"छोड़ें", undo:"पूर्ववत", clear:"बोर्ड साफ़ करें",
-    colour:"रंग", size:"ब्रश", eraser:"इरेज़र", host:"रूम होस्ट", name:"आपका नाम",
-    savePng:"PNG सहेजें", offline:"ऑफ़लाइन", connecting:"जुड़ रहे हैं…", online:"कमरे में",
-    foot:"बिना इंटरनेट, सिर्फ़ वाई-फ़ाई पर चलता है। कुछ भी आपके नेटवर्क से बाहर नहीं जाता।" });
-  Loom.i18n.extend("gu", { join:"રૂમમાં જોડાઓ", leave:"છોડો", undo:"પૂર્વવત્", clear:"બોર્ડ સાફ કરો",
-    colour:"રંગ", size:"બ્રશ", eraser:"ઇરેઝર", host:"રૂમ હોસ્ટ", name:"તમારું નામ",
-    savePng:"PNG સાચવો", offline:"ઑફલાઇન", connecting:"જોડાઈ રહ્યા છીએ…", online:"રૂમમાં",
-    foot:"ઇન્ટરનેટ વગર, ફક્ત વાઇ-ફાઇ પર ચાલે છે. કંઈ પણ તમારા નેટવર્કની બહાર જતું નથી." });
+  /* ---------- the chalk sets ---------- */
+  var PALETTE = {
+    default: ["#e7e9ee", "#22c55e", "#38bdf8", "#f59e0b", "#ef4444", "#a78bfa", "#f472b6"],
+    /* Okabe–Ito: readable with any of the common colour-vision differences */
+    accessible: ["#e7e9ee", "#e69f00", "#56b4e9", "#009e73", "#f0e442", "#0072b2", "#d55e00", "#cc79a7"],
+    contrast: ["#ffffff", "#ffff00", "#00e5ff", "#00ff87", "#ff5c5c", "#ff9d00"]
+  };
+
+  /* ---------- strings ---------- */
+  var STRINGS = {
+    en: { join:"Join room", leave:"Leave", undo:"Undo", undoAny:"Undo any", clear:"Clear", colour:"Colour",
+      size:"Brush", nib:"Nib", chalks:"Chalks", background:"Board", host:"Room host", name:"Your name",
+      save:"Save", open:"Open", pdf:"PDF", record:"Record", replay:"Replay", find:"Find a room", qr:"QR",
+      newBoard:"+ board", tool:"Tool", tagline:"A shared whiteboard for the room. Everyone on the same Wi-Fi draws on the same board, live.",
+      offline:"offline", connecting:"connecting…", online:"in the room", language:"Language",
+      foot:"Works on a Wi-Fi network with the internet unplugged. Nothing leaves your network — no accounts, no telemetry.",
+      pen:"Pen", line:"Line", box:"Box", circle:"Circle", note:"Note", eraser:"Eraser", laser:"Laser",
+      chalk:"Chalk", marker:"Marker", plain:"Plain", paper:"Paper", grid:"Grid", blackboard:"Blackboard",
+      default:"Default", accessible:"Colour-safe", contrast:"High contrast",
+      found:"found a room", none:"no room answered", saved:"saved", opened:"board opened",
+      recording:"recording", restored:"board restored", joined:"Joined the room", noteHint:"Type a note, then Enter" },
+    hi: { join:"कमरे में जुड़ें", leave:"छोड़ें", undo:"पूर्ववत", undoAny:"कुछ भी पूर्ववत", clear:"बोर्ड साफ़ करें",
+      colour:"रंग", size:"ब्रश", nib:"नोक", chalks:"चॉक", background:"बोर्ड", host:"रूम होस्ट", name:"आपका नाम",
+      save:"सहेजें", open:"खोलें", pdf:"PDF", record:"रिकॉर्ड", replay:"फिर चलाएँ", find:"कमरा खोजें", qr:"QR",
+      newBoard:"+ बोर्ड", tool:"औज़ार", tagline:"कमरे का साझा बोर्ड। एक ही वाई-फ़ाई पर सब एक साथ बोर्ड पर लिखते हैं।",
+      offline:"ऑफ़लाइन", connecting:"जुड़ रहे हैं…", online:"कमरे में", language:"भाषा",
+      foot:"बिना इंटरनेट, सिर्फ़ वाई-फ़ाई पर चलता है। कुछ भी आपके नेटवर्क से बाहर नहीं जाता।",
+      pen:"कलम", line:"रेखा", box:"आयत", circle:"वृत्त", note:"टिप्पणी", eraser:"इरेज़र", laser:"लेज़र",
+      chalk:"चॉक", marker:"मार्कर", plain:"सादा", paper:"काग़ज़", grid:"ग्रिड", blackboard:"ब्लैकबोर्ड",
+      default:"डिफ़ॉल्ट", accessible:"रंग-सुरक्षित", contrast:"उच्च कंट्रास्ट",
+      found:"कमरा मिला", none:"कोई कमरा नहीं मिला", saved:"सहेजा गया", opened:"बोर्ड खुला",
+      recording:"रिकॉर्ड हो रहा है", restored:"बोर्ड बहाल", joined:"कमरे में जुड़े", noteHint:"टिप्पणी लिखें, फिर Enter" },
+    gu: { join:"રૂમમાં જોડાઓ", leave:"છોડો", undo:"પૂર્વવત્", undoAny:"કંઈ પણ પૂર્વવત્", clear:"બોર્ડ સાફ કરો",
+      colour:"રંગ", size:"બ્રશ", nib:"ટોચ", chalks:"ચોક", background:"બોર્ડ", host:"રૂમ હોસ્ટ", name:"તમારું નામ",
+      save:"સાચવો", open:"ખોલો", pdf:"PDF", record:"રેકોર્ડ", replay:"ફરી ચલાવો", find:"રૂમ શોધો", qr:"QR",
+      newBoard:"+ બોર્ડ", tool:"સાધન", tagline:"રૂમનું સહિયારું બોર્ડ. એક જ વાઇ-ફાઇ પર સૌ સાથે લખે છે.",
+      offline:"ઑફલાઇન", connecting:"જોડાઈ રહ્યા છીએ…", online:"રૂમમાં", language:"ભાષા",
+      foot:"ઇન્ટરનેટ વગર, ફક્ત વાઇ-ફાઇ પર ચાલે છે. કંઈ પણ તમારા નેટવર્કની બહાર જતું નથી.",
+      pen:"પેન", line:"રેખા", box:"ચોકઠું", circle:"વર્તુળ", note:"નોંધ", eraser:"ઇરેઝર", laser:"લેઝર",
+      chalk:"ચોક", marker:"માર્કર", plain:"સાદું", paper:"કાગળ", grid:"ગ્રિડ", blackboard:"બ્લેકબોર્ડ",
+      default:"ડિફોલ્ટ", accessible:"રંગ-સુરક્ષિત", contrast:"ઊંચો કોન્ટ્રાસ્ટ",
+      found:"રૂમ મળ્યો", none:"કોઈ રૂમ મળ્યો નહીં", saved:"સાચવ્યું", opened:"બોર્ડ ખૂલ્યું",
+      recording:"રેકોર્ડ થઈ રહ્યું છે", restored:"બોર્ડ પુનઃસ્થાપિત", joined:"રૂમમાં જોડાયા", noteHint:"નોંધ લખો, પછી Enter" },
+    mr: { join:"रूम जॉइन करा", leave:"सोडून द्या", undo:"अनडू", undoAny:"अनडू सर्व", clear:"क्लिअर", colour:"रंग", size:"ब्रश", nib:"निब", chalks:"चाक्स", background:"बोर्ड", host:"रूम होस्ट", name:"तुमचे नाव", save:"सेव्ह", open:"ओपन", pdf:"PDF", record:"रेकॉर्ड", replay:"रिप्ले", find:"रूम शोधा", qr:"QR", newBoard:"+ बोर्ड", tool:"टूल", tagline:"या रूमसाठी एक शेअर्ड व्हाईटबोर्ड. एकाच वाय-फायवर असलेले सर्वजण एकाच बोर्डवर लाईव्ह चित्र काढतात.", offline:"ऑफलाईन", connecting:"कनेक्ट होत आहे…", online:"रूममध्ये", language:"भाषा", foot:"इंटरनेट बंद असतानाही वाय-फाय नेटवर्कवर काम करते. तुमच्या नेटवर्कमधून काहीही बाहेर जात नाही — कोणतीही खाती नाहीत, कोणतेही टेलिमेट्री नाही.", pen:"पेन", line:"लाईन", box:"बॉक्स", circle:"वर्तुळ", note:"नोट", eraser:"इरेजर", laser:"लेझर", chalk:"चाक", marker:"मार्कर", plain:"प्लेन", paper:"कागद", grid:"ग्रिड", blackboard:"ब्लॅकबोर्ड", default:"डिफॉल्ट", accessible:"कलर-सेफ", contrast:"हाय कॉन्ट्रास्ट", found:"रूम सापडली", none:"कोणत्याही रूमने उत्तर दिले नाही", saved:"सेव्ह केले", opened:"बोर्ड उघडला", recording:"रेकॉर्डिंग", restored:"बोर्ड रिस्टोअर केला", joined:"रूम जॉइन केली", noteHint:"नोट टाईप करा, आणि मग Enter दाबा" },
+    bn: { join:"রুম জয়েন করুন", leave:"লিভ", undo:"আনডু", undoAny:"যেকোনো আনডু করুন", clear:"ক্লিয়ার", colour:"রঙ", size:"ব্রাশ", nib:"নিব", chalks:"চক", background:"বোর্ড", host:"রুম হোস্ট", name:"আপনার নাম", save:"সেভ", open:"ওপেন", pdf:"পিডিএফ", record:"রেকর্ড", replay:"রিপ্লে", find:"রুম খুঁজুন", qr:"কিউআর", newBoard:"+ বোর্ড", tool:"টুল", tagline:"রুমের জন্য একটি শেয়ার করা হোয়াইটবোর্ড। একই ওয়াই-ফাইয়ে থাকা সবাই একই বোর্ডে একসাথে লাইভ আঁকতে পারে।", offline:"অফলাইন", connecting:"কানেক্ট হচ্ছে…", online:"রুমের মধ্যে", language:"ভাষা", foot:"ইন্টারনেট সংযোগ বিচ্ছিন্ন থাকলেও ওয়াই-ফাই নেটওয়ার্কে কাজ করে। আপনার নেটওয়ার্ক থেকে কিছুই বাইরে যায় না — কোনো অ্যাকাউন্ট নেই, কোনো টেলিমেট্রি নেই।", pen:"কলম", line:"লাইন", box:"বক্স", circle:"বৃত্ত", note:"নোট", eraser:"রাবার", laser:"লেজার", chalk:"চক", marker:"মার্কার", plain:"প্লেইন", paper:"কাগজ", grid:"গ্রিড", blackboard:"ব্ল্যাকবোর্ড", default:"ডিফল্ট", accessible:"কালার-সেফ", contrast:"হাই কন্ট্রাস্ট", found:"রুম পাওয়া গেছে", none:"কোনো রুমের উত্তর পাওয়া যায়নি", saved:"সেভ করা হয়েছে", opened:"বোর্ড খোলা হয়েছে", recording:"রেকর্ডিং হচ্ছে", restored:"বোর্ড রিস্টোর করা হয়েছে", joined:"রুম জয়েন করা হয়েছে", noteHint:"নোট টাইপ করুন, তারপর Enter চাপুন" },
+    ta: { join:"அறையில் சேர்", leave:"வெளியேறு", undo:"செய்தியைத் திரும்பப் பெறு", undoAny:"எதையும் திரும்பப் பெறு", clear:"தெளி", colour:"நிறம்", size:"தூரிகை", nib:"நிப்", chalks:"சாக்பீஸ்கள்", background:"பலகை", host:"அறை தொகுப்பாளர்", name:"உங்கள் பெயர்", save:"சேமி", open:"திற", pdf:"PDF", record:"பதிவு செய்", replay:"மீண்டும் இயக்கு", find:"அறையைக் கண்டுபிடி", qr:"QR", newBoard:"+ பலகை", tool:"கருவி", tagline:"அறையின் பகிரப்பட்ட ஒயிட்போர்டு. ஒரே Wi-Fi-யில் உள்ள அனைவரும் ஒரே பலகையில் நேரடியாக வரைவார்கள்.", offline:"ஆஃப்லைன்", connecting:"இணைக்கப்படுகிறது…", online:"அறையில்", language:"மொழி", foot:"இணைய இணைப்பு துண்டிக்கப்பட்டிருந்தாலும் Wi-Fi நெட்வொர்க்கில் வேலை செய்யும். உங்கள் நெட்வொர்க்கிலிருந்து எதுவும் வெளியேறாது — கணக்குகள் இல்லை, டெலிமெட்ரி இல்லை.", pen:"பேனா", line:"கோடு", box:"பெட்டி", circle:"வட்டம்", note:"குறிப்பு", eraser:"அழிக்கவும்", laser:"லேசர்", chalk:"சாக்", marker:"மார்க்கர்", plain:"சாதாரண", paper:"காகிதம்", grid:"கட்டம்", blackboard:"கருப்புப் பலகை", default:"இயல்புநிலை", accessible:"நிறம்-பாதுகாப்பானது", contrast:"அதிக கான்ட்ராஸ்ட்", found:"அறையைக் கண்டுபிடித்தேன்", none:"அறை பதிலளிக்கவில்லை", saved:"சேமிக்கப்பட்டது", opened:"பலகை திறக்கப்பட்டது", recording:"பதிவு செய்யப்படுகிறது", restored:"பலகை மீட்டமைக்கப்பட்டது", joined:"அறையில் சேர்ந்தேன்", noteHint:"ஒரு குறிப்பை டைப் செய்து, பிறகு Enter-ஐ அழுத்தவும்" }
+  };
+  Object.keys(STRINGS).forEach(function (lang) { Loom.i18n.extend(lang, STRINGS[lang]); });
 
   Loom.theme.apply();
 
@@ -108,29 +189,118 @@
   /* ---------- state ---------- */
   var doc = Chalk.newDoc();
   var client = null;
-  var myStrokes = [];          // ids I drew, newest last (for undo)
-  var drawing = null;          // { id, lastSent }
-  var erasing = false;
+  var myStrokes = [];            // ids I drew, newest last (for undo)
+  var pending = [];              // messages drawn while the room was unreachable
+  var cursors = {};              // author -> {x,y,color,laser,at}
+  var drawing = null;            // { id, lastSent, start, points }
+  var tool = Loom.storage.get("chalk:tool", "pen");
+  var nib = Chalk.normNib(Loom.storage.get("chalk:nib", "chalk"));
+  var palette = Chalk.normPalette(Loom.storage.get("chalk:palette", "default"));
+  var background = Chalk.normBackground(Loom.storage.get("chalk:bg", "plain"));
   var colour = Loom.storage.get("chalk:colour", "") || ink();
   var size = Loom.storage.get("chalk:size", 3);
+  var undoAny = false;
+  var recording = false;
+  var log = [];                  // [{at, msg}] for the replay
+  var replaying = false;
+  var noteAt = null;             // where the note editor is open
+  var kb = { x: 60, y: 60, on: false };
 
   $("host").value = Loom.storage.get("chalk:host", Lan.hostUrl(8080));
   $("name").value = Loom.storage.get("chalk:name", "guest");
   $("lang").value = Loom.i18n.lang;
 
-  function T(k) { return Loom.i18n.t(k); }
+  function T(k) { return Loom.i18n.t(k) || k; }
+  function toast(msg) {
+    var el = $("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove("show"); }, 2200);
+  }
+
+  /* ---------- languages ---------- */
+  Object.keys(STRINGS).forEach(function (code) {
+    var o = document.createElement("option");
+    o.value = code;
+    o.textContent = { en: "English", hi: "हिन्दी", gu: "ગુજરાતી", mr: "मराठी", bn: "বাংলা", ta: "தமிழ்" }[code] || code;
+    $("lang").appendChild(o);
+  });
+  if (!STRINGS[Loom.i18n.lang]) $("lang").value = "en";
 
   function applyStrings() {
-    document.querySelectorAll("[data-i18n]").forEach(function (el) { el.textContent = T(el.getAttribute("data-i18n")); });
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      var k = el.getAttribute("data-i18n");
+      if (k) el.textContent = T(k);
+    });
     $("dot").className = "dot" + (client ? " on" : "");
     setStatus(client ? T("online") : T("offline"));
+    buildSelects();
+    buildTools();
   }
   function setStatus(s) { $("status").textContent = s; }
 
-  /* ---------- colours ----------
-   * The first swatch is the board's own ink, so it is readable on whichever
-   * board the reader is on: chalk-white on the dark board, near-black on the
-   * light one. It is rebuilt when the theme changes. */
+  /* ---------- selects ---------- */
+  function fill(sel, items, current) {
+    sel.textContent = "";
+    items.forEach(function (it) {
+      var o = document.createElement("option");
+      o.value = it.value;
+      o.textContent = it.label;
+      if (it.value === current) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+  function buildSelects() {
+    fill($("nib"), [
+      { value: "chalk", label: T("chalk") },
+      { value: "marker", label: T("marker") },
+      { value: "pen", label: T("pen") }
+    ], nib);
+    fill($("palette"), [
+      { value: "default", label: T("default") },
+      { value: "accessible", label: T("accessible") },
+      { value: "contrast", label: T("contrast") }
+    ], palette);
+    fill($("bg"), [
+      { value: "plain", label: T("plain") },
+      { value: "paper", label: T("paper") },
+      { value: "grid", label: T("grid") },
+      { value: "blackboard", label: T("blackboard") }
+    ], background);
+    fill($("boardSel"), boards().map(function (b) { return { value: b, label: b }; }), doc.board);
+  }
+  function boards() {
+    var list = Loom.storage.get("chalk:boards", ["main", "lesson", "spare"]);
+    if (list.indexOf(doc.board) === -1) list.push(doc.board);
+    return list;
+  }
+
+  /* ---------- tools ---------- */
+  var TOOL_ORDER = ["pen", "line", "box", "circle", "note", "eraser", "laser"];
+  function buildTools() {
+    var wrap = $("tools");
+    wrap.textContent = "";
+    TOOL_ORDER.forEach(function (t) {
+      var b = Loom.ui.el("button", {
+        class: "ghost", type: "button", "aria-pressed": String(tool === t),
+        title: T(t), "data-tool": t
+      });
+      b.textContent = T(t);
+      b.addEventListener("click", function () { setTool(t); });
+      wrap.appendChild(b);
+    });
+  }
+  function setTool(t) {
+    tool = Chalk.normTool(t);
+    Loom.storage.set("chalk:tool", tool);
+    document.querySelectorAll("#tools button").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-tool") === tool));
+    });
+    $("board").style.cursor = tool === "note" ? "text" : tool === "laser" ? "pointer" : "crosshair";
+  }
+
+  /* ---------- colours ---------- */
   var sw = $("swatches");
   function paintSwatches() {
     sw.querySelectorAll(".swatch").forEach(function (x) {
@@ -138,26 +308,31 @@
     });
   }
   function buildSwatches() {
-    var palette = [ink()].concat(COLOURS.slice(1));
+    var inks = PALETTE[palette] || PALETTE.default;
+    var list = [ink()].concat(inks.slice(1));
     sw.textContent = "";
-    palette.forEach(function (c) {
+    list.forEach(function (c) {
       var b = Loom.ui.el("button", { class: "swatch", type: "button", "aria-label": c, title: c });
       b.style.background = c;
       b.setAttribute("aria-pressed", String(c === colour));
       b.addEventListener("click", function () {
-        colour = c; erasing = false; $("eraser").setAttribute("aria-pressed", "false");
+        colour = c;
         Loom.storage.set("chalk:colour", c);
         paintSwatches();
       });
       sw.appendChild(b);
     });
   }
-  buildSwatches();
-  $("size").value = size;
-  $("size").addEventListener("input", function () { size = +this.value; Loom.storage.set("chalk:size", size); });
 
   /* ---------- canvas ---------- */
   var cv = $("board"), ctx = cv.getContext("2d"), dpr = 1, W = 0, H = 0;
+
+  function cssVar(name, fallback) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+  function bg() { return cssVar("--card", "#171a21"); }
+  function ink() { return cssVar("--ink", "#e7e9ee"); }
 
   function resize() {
     var r = $("boardWrap").getBoundingClientRect();
@@ -167,175 +342,644 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     draw();
   }
-  function cssVar(name, fallback) {
-    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return v || fallback;
+
+  /* The board's own surface: plain, dotted paper, a grid, or a blackboard. */
+  function paintBackground() {
+    var base = bg();
+    if (background === "blackboard") {
+      ctx.fillStyle = "#0f2a23";
+      ctx.fillRect(0, 0, W, H);
+      return "#0f2a23";
+    }
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, W, H);
+    var faint = colourWithAlpha(cssVar("--mut", "#9aa3b2"), 0.28);
+    if (background === "paper") {
+      ctx.fillStyle = faint;
+      for (var y = 18; y < H; y += 22) {
+        for (var x = 18; x < W; x += 22) {
+          ctx.beginPath();
+          ctx.arc(x, y, 1, 0, 6.283);
+          ctx.fill();
+        }
+      }
+    } else if (background === "grid") {
+      ctx.strokeStyle = faint;
+      ctx.lineWidth = 1;
+      for (var gx = 24; gx < W; gx += 24) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+      for (var gy = 24; gy < H; gy += 24) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+    }
+    return base;
   }
-  function bg() { return cssVar("--card", "#171a21"); }
-  function ink() { return cssVar("--ink", "#e7e9ee"); }
-  function draw() {
-    if (sceneName && myStrokes.length === 0) doc = sceneDoc(sceneName);
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = bg(); ctx.fillRect(0, 0, W, H);
-    ctx.lineCap = "round"; ctx.lineJoin = "round";
-    doc.strokes.forEach(function (s) {
-      var pts = s.points; if (!pts.length) return;
-      /* Chalk.DEFAULT_COLOR means "the board's own ink", so the same stroke is
-       * chalk-white on the dark board and near-black on the light one. */
-      ctx.strokeStyle = s.color === "erase" ? bg()
-        : (s.color === Chalk.DEFAULT_COLOR ? ink() : s.color);
-      ctx.lineWidth = s.size;
-      if (pts.length === 1) { ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.size / 2, 0, 6.283); ctx.fill(); return; }
-      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-      for (var i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+
+  function colourWithAlpha(hex, a) {
+    var h = String(hex).replace("#", "");
+    if (h.length !== 6) return "rgba(150,150,150," + a + ")";
+    var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    return "rgba(" + r + "," + g + "," + b + "," + a + ")";
+  }
+
+  /* A nib changes how a stroke reads: chalk is soft and pressure-shaped, a
+   * marker is flat and even, a pen is thin and crisp. */
+  function nibProfile(n) {
+    if (n === "marker") return { alpha: 1, base: 0.85, gain: 0.3 };
+    if (n === "pen") return { alpha: 1, base: 0.5, gain: 0.12 };
+    return { alpha: 0.9, base: 0.6, gain: 0.85 };
+  }
+
+  function paintStroke(s) {
+    var pts = s.points || [];
+    if (!pts.length) return;
+    var surface = background === "blackboard" ? "#0f2a23" : bg();
+    var prof = nibProfile(s.nib);
+    var ink0 = s.color === "erase" ? surface : (s.color === Chalk.DEFAULT_COLOR ? ink() : s.color);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.globalAlpha = prof.alpha;
+
+    if (pts.length === 1) {
+      ctx.fillStyle = ink0;
+      ctx.beginPath();
+      ctx.arc(pts[0].x, pts[0].y, Math.max(0.6, s.size / 2), 0, 6.283);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      return;
+    }
+    ctx.strokeStyle = ink0;
+    for (var i = 1; i < pts.length; i++) {
+      var a = pts[i - 1], b = pts[i];
+      var p = ((a.p === undefined ? 0.5 : a.p) + (b.p === undefined ? 0.5 : b.p)) / 2;
+      ctx.lineWidth = Math.max(0.6, s.size * (prof.base + prof.gain * p));
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
       ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function paintNote(n) {
+    var w = 150, h = 46;
+    var c = n.color === Chalk.DEFAULT_COLOR ? ink() : n.color;
+    ctx.save();
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = c;
+    roundRect(n.x, n.y, w, h, 6);
+    ctx.fill();
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = c;
+    ctx.lineWidth = 1;
+    roundRect(n.x, n.y, w, h, 6);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = c;
+    ctx.font = "13px ui-sans-serif, system-ui, sans-serif";
+    ctx.textBaseline = "top";
+    var words = String(n.text || "").split(" ");
+    var line = "", y = n.y + 7;
+    words.forEach(function (word) {
+      var test = line ? line + " " + word : word;
+      if (ctx.measureText(test).width > w - 16) {
+        ctx.fillText(line, n.x + 8, y);
+        y += 16;
+        line = word;
+      } else line = test;
+    });
+    if (line && y < n.y + h - 6) ctx.fillText(line, n.x + 8, y);
+    ctx.restore();
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function paintCursors(now) {
+    Object.keys(cursors).forEach(function (k) {
+      var c = cursors[k];
+      if (!c || now - c.at > (c.laser ? 1600 : 4000)) { delete cursors[k]; return; }
+      var fade = Math.max(0, 1 - (now - c.at) / (c.laser ? 1600 : 4000));
+      var col = c.color === Chalk.DEFAULT_COLOR ? ink() : c.color;
+      ctx.save();
+      ctx.globalAlpha = c.laser ? fade : 0.55 * fade;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.laser ? 7 : 4, 0, 6.283);
+      ctx.fill();
+      ctx.globalAlpha = 0.85 * fade;
+      ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText(c.author, c.x + 8, c.y - 6);
+      ctx.restore();
     });
   }
 
-  function send(msg) {
-    if (!client) return;
-    try { client.send(msg); } catch (e) {}
+  function draw() {
+    if (sceneName && myStrokes.length === 0 && !drawing) doc = sceneDoc(sceneName);
+    var surface = paintBackground();
+    (doc.strokes || []).forEach(paintStroke);
+    (doc.notes || []).forEach(paintNote);
+    if (drawing && drawing.preview && drawing.preview.length) {
+      paintStroke({ points: drawing.preview, color: drawing.color, size: drawing.size, nib: nib });
+    }
+    if (kb.on || document.activeElement === cv) {
+      ctx.save();
+      ctx.strokeStyle = cssVar("--acc", "#22c55e");
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(kb.x, kb.y, 6, 0, 6.283);
+      ctx.stroke();
+      ctx.restore();
+    }
+    paintCursors(Date.now());
+    if (Object.keys(cursors).length) requestAnimationFrame(function () { draw(); });
   }
 
+  /* ---------- sending ---------- */
+  function send(msg) {
+    if (!client) return;
+    try {
+      client.send(msg).catch(function () { pending.push(msg); });
+    } catch (e) { pending.push(msg); }
+  }
+  function note(msg) {
+    if (recording && !replaying) log.push({ at: Date.now(), msg: msg });
+  }
+  function applyLocal(msg) {
+    Chalk.apply(doc, msg, { w: W, h: H });
+    note(msg);
+  }
+
+  /* ---------- pointer input ---------- */
   function pos(ev) {
     var r = cv.getBoundingClientRect();
-    return { x: Math.round((ev.clientX - r.left) * 10) / 10, y: Math.round((ev.clientY - r.top) * 10) / 10 };
+    return {
+      x: Math.round((ev.clientX - r.left) * 10) / 10,
+      y: Math.round((ev.clientY - r.top) * 10) / 10,
+      p: ev.pressure && ev.pressure > 0 ? Math.round(ev.pressure * 100) / 100 : 0.5
+    };
+  }
+  function baseMsg(id, p) {
+    return {
+      t: "point", id: id, b: doc.board, author: $("name").value || "guest",
+      color: tool === "eraser" ? "erase" : colour,
+      size: tool === "eraser" ? Math.max(size, 12) : size,
+      nib: nib, tool: tool, x: p.x, y: p.y, p: p.p
+    };
   }
 
   cv.addEventListener("pointerdown", function (ev) {
+    cv.focus();
     cv.setPointerCapture(ev.pointerId);
-    sceneName = null;                 /* from here the board is theirs */
-    var id = Chalk.newId();
+    sceneName = null;                       /* from here the board is theirs */
     var p = pos(ev);
-    drawing = { id: id, last: 0 };
+
+    if (undoAny) {
+      var hit = Chalk.hitTest(doc, p.x, p.y, 10);
+      if (hit) {
+        applyLocal({ t: "undo", id: hit.id, b: doc.board });
+        send({ t: "undo", id: hit.id, b: doc.board });
+        draw();
+      }
+      return;
+    }
+    if (tool === "note") { openNote(p); return; }
+    if (tool === "laser") { sendCursor(p, true); return; }
+
+    var id = Chalk.newId();
+    drawing = { id: id, lastSent: 0, start: p, points: [p], color: tool === "eraser" ? "erase" : colour, size: size, preview: null };
+
+    if (tool === "line" || tool === "box" || tool === "circle") {
+      drawing.preview = Chalk.shapePoints(tool, p, p);
+      draw();
+      return;
+    }
     myStrokes.push(id);
-    var msg = { t: "point", id: id, author: $("name").value || "guest",
-      color: erasing ? "erase" : colour, size: erasing ? Math.max(size, 12) : size, x: p.x, y: p.y };
-    Chalk.apply(doc, msg, { w: W, h: H });   // local: works offline too
+    var msg = baseMsg(id, p);
+    Chalk.apply(doc, msg, { w: W, h: H });
+    note(msg);
     send(msg);
     draw();
   });
 
   cv.addEventListener("pointermove", function (ev) {
-    if (!drawing) return;
     var p = pos(ev);
-    Chalk.apply(doc, { t: "point", id: drawing.id, x: p.x, y: p.y }, { w: W, h: H });
+    if (!drawing) {
+      if (tool === "laser" && client) sendCursor(p, true);
+      return;
+    }
+    if (drawing.preview) {
+      drawing.preview = Chalk.shapePoints(tool, drawing.start, p);
+      drawing.end = p;
+      draw();
+      return;
+    }
+    Chalk.apply(doc, { t: "point", id: drawing.id, x: p.x, y: p.y, p: p.p }, { w: W, h: H });
     var now = Date.now();
-    if (now - drawing.last > 35) { drawing.last = now; send({ t: "point", id: drawing.id, x: p.x, y: p.y }); }
+    if (now - drawing.lastSent > 35) {
+      drawing.lastSent = now;
+      send({ t: "point", id: drawing.id, b: doc.board, x: p.x, y: p.y, p: p.p });
+    }
     draw();
   });
 
-  var lastPos = { x: 0, y: 0 };
-  function endStroke() {
+  function endStroke(ev) {
     if (!drawing) return;
-    /* flush the final point so the far end has the whole line */
-    send({ t: "point", id: drawing.id, x: lastPos.x, y: lastPos.y });
+    if (drawing.preview) {
+      /* a shape commits on release, as one whole stroke */
+      var pts = drawing.preview;
+      var id = Chalk.newId();
+      var msg = {
+        t: "stroke", id: id, b: doc.board, author: $("name").value || "guest",
+        color: colour, size: size, nib: nib, tool: tool,
+        points: pts.map(function (q) { return { x: Math.round(q.x * 10) / 10, y: Math.round(q.y * 10) / 10, p: 0.5 }; })
+      };
+      myStrokes.push(id);
+      applyLocal(msg);
+      send(msg);
+      drawing = null;
+      draw();
+      return;
+    }
+    var last = drawing.points[drawing.points.length - 1];
+    if (ev) {
+      var p = pos(ev);
+      last = p;
+      Chalk.apply(doc, { t: "point", id: drawing.id, x: p.x, y: p.y, p: p.p }, { w: W, h: H });
+    }
+    if (last) send({ t: "point", id: drawing.id, b: doc.board, x: last.x, y: last.y, p: last.p });
     drawing = null;
+    draw();
+    autosave();
   }
-  cv.addEventListener("pointerup", function (ev) { lastPos = pos(ev); endStroke(); });
-  cv.addEventListener("pointercancel", function () { drawing = null; });
-  cv.addEventListener("pointerleave", function (ev) { if (drawing) { lastPos = pos(ev); endStroke(); } });
+  cv.addEventListener("pointerup", function (ev) { endStroke(ev); });
+  cv.addEventListener("pointercancel", function () { drawing = null; draw(); });
+  cv.addEventListener("pointerleave", function (ev) { if (drawing) endStroke(ev); });
+
+  function sendCursor(p, laser) {
+    if (!client) return;
+    var now = Date.now();
+    if (sendCursor._t && now - sendCursor._t < 90) return;
+    sendCursor._t = now;
+    send({ t: "cursor", b: doc.board, id: "me", author: $("name").value || "guest",
+      color: colour, laser: !!laser, x: p.x, y: p.y, at: now });
+  }
+
+  /* ---------- notes ---------- */
+  function openNote(p) {
+    noteAt = p;
+    var ed = $("noteEditor");
+    ed.style.display = "block";
+    ed.style.left = Math.min(Math.max(4, p.x), Math.max(4, W - 200)) + "px";
+    ed.style.top = Math.min(Math.max(4, p.y), Math.max(4, H - 90)) + "px";
+    $("noteText").value = "";
+    $("noteText").placeholder = T("noteHint");
+    $("noteText").focus();
+  }
+  function commitNote() {
+    if (!noteAt) return;
+    var text = Chalk.normText($("noteText").value);
+    $("noteEditor").style.display = "none";
+    var at = noteAt;
+    noteAt = null;
+    if (!text) { draw(); return; }
+    var msg = { t: "note", id: Chalk.newId(), b: doc.board, author: $("name").value || "guest",
+      color: colour, x: at.x, y: at.y, text: text };
+    applyLocal(msg);
+    send(msg);
+    draw();
+    autosave();
+  }
+  $("noteText").addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); commitNote(); }
+    if (ev.key === "Escape") { noteAt = null; $("noteEditor").style.display = "none"; draw(); }
+  });
+  $("noteText").addEventListener("blur", function () { if (noteAt) commitNote(); });
+
+  /* ---------- keyboard drawing ---------- */
+  cv.addEventListener("keydown", function (ev) {
+    var step = ev.shiftKey ? 2 : 10, moved = false;
+    if (ev.key === "ArrowLeft") { kb.x -= step; moved = true; }
+    if (ev.key === "ArrowRight") { kb.x += step; moved = true; }
+    if (ev.key === "ArrowUp") { kb.y -= step; moved = true; }
+    if (ev.key === "ArrowDown") { kb.y += step; moved = true; }
+    if (ev.key === " " || ev.key === "Enter") {
+      ev.preventDefault();
+      if (!kb.on) {
+        kb.on = true;
+        kb.id = Chalk.newId();
+        myStrokes.push(kb.id);
+        var m = baseMsg(kb.id, { x: kb.x, y: kb.y, p: 0.5 });
+        Chalk.apply(doc, m, { w: W, h: H });
+        note(m);
+        send(m);
+        draw();
+      } else {
+        kb.on = false;
+        draw();
+        autosave();
+      }
+      return;
+    }
+    if (ev.key === "Escape" && kb.on) { kb.on = false; draw(); return; }
+    if (moved) {
+      ev.preventDefault();
+      kb.x = Math.max(0, Math.min(W, kb.x));
+      kb.y = Math.max(0, Math.min(H, kb.y));
+      if (kb.on) {
+        Chalk.apply(doc, { t: "point", id: kb.id, x: kb.x, y: kb.y, p: 0.5 }, { w: W, h: H });
+        send({ t: "point", id: kb.id, b: doc.board, x: kb.x, y: kb.y, p: 0.5 });
+      }
+      draw();
+    }
+  });
 
   /* ---------- toolbar ---------- */
-  $("eraser").addEventListener("click", function () {
-    erasing = !erasing; this.setAttribute("aria-pressed", String(erasing));
+  $("size").value = size;
+  $("size").addEventListener("input", function () { size = +this.value; Loom.storage.set("chalk:size", size); });
+  $("nib").addEventListener("change", function () { nib = Chalk.normNib(this.value); Loom.storage.set("chalk:nib", nib); });
+  $("palette").addEventListener("change", function () {
+    palette = Chalk.normPalette(this.value);
+    Loom.storage.set("chalk:palette", palette);
+    buildSwatches();
   });
-  $("undo").addEventListener("click", function () {
-    var id = myStrokes.pop();
-    if (!id) return;
-    Chalk.apply(doc, { t: "undo", id: id });
-    send({ t: "undo", id: id });
+  $("bg").addEventListener("change", function () {
+    background = Chalk.normBackground(this.value);
+    Loom.storage.set("chalk:bg", background);
     draw();
   });
-  $("clear").addEventListener("click", function () {
-    if (!confirm("Clear the board for everyone?")) return;
-    sceneName = null;
-    Chalk.apply(doc, { t: "clear" });
-    myStrokes = [];
-    send({ t: "clear" });
+  $("lang").addEventListener("change", function () { Loom.i18n.setLang(this.value); applyStrings(); draw(); });
+
+  $("theme").addEventListener("click", function () {
+    Loom.theme.set(isDark() ? "light" : "dark");
+    paintTheme();
+    if (!Loom.storage.get("chalk:colour", "")) colour = ink();
+    buildSwatches();
     draw();
   });
-  $("png").addEventListener("click", function () {
-    var a = document.createElement("a");
-    a.href = cv.toDataURL("image/png");
-    a.download = "chalk-" + new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-") + ".png";
-    document.body.appendChild(a); a.click(); a.remove();
-  });
-  $("lang").addEventListener("change", function () { Loom.i18n.setLang(this.value); applyStrings(); });
-
-  /* ---------- the room ---------- */
-  function join() {
-    if (client) return;
-    var url = $("host").value.trim().replace(/\/+$/, "");
-    if (!url) return;
-    Loom.storage.set("chalk:host", url);
-    Loom.storage.set("chalk:name", $("name").value);
-    setStatus(T("connecting"));
-    $("dot").className = "dot";
-    client = Lan.client({
-      url: url,
-      onOpen: function (h) {
-        $("dot").className = "dot on";
-        setStatus(T("online") + (h && h.room ? " · " + h.room : ""));
-        $("join").hidden = true; $("leave").hidden = false;
-        Loom.a11y.announce("Joined the room");
-      },
-      onMessage: function (m) {
-        /* ignore the echo of my own messages (they are already applied) */
-        if (m && m.id && myStrokes.indexOf(m.id) !== -1) return;
-        Chalk.apply(doc, m, { w: W, h: H });
-        draw();
-      },
-      onError: function () { $("dot").className = "dot"; setStatus(T("offline")); }
-    });
-  }
-  function leave() {
-    if (!client) return;
-    client.close(); client = null;
-    $("dot").className = "dot"; setStatus(T("offline"));
-    $("join").hidden = false; $("leave").hidden = true;
-  }
-  $("join").addEventListener("click", join);
-  $("leave").addEventListener("click", leave);
-
-  /* ---------- theme ----------
-   * web-kit owns the "theme" key and the tokens; this app only adds the button
-   * beside the title. The landing page keeps its own key, so switching one
-   * surface never silently repaints the other. */
-  /* Read the board that is actually painted — that is the only answer that
-   * stays true when the theme came from the system or from ?theme=. */
   function isDark() { return document.documentElement.getAttribute("data-theme") === "dark"; }
   function paintTheme() {
     var dark = isDark();
     $("theme").textContent = dark ? "Light" : "Dark";
     $("theme").setAttribute("aria-label", dark ? "Switch to the light board" : "Switch to the dark board");
   }
-  $("theme").addEventListener("click", function () {
-    Loom.theme.set(isDark() ? "light" : "dark");
-    paintTheme();
-    if (!Loom.storage.get("chalk:colour", "")) colour = ink();   /* nobody has picked a chalk yet */
-    buildSwatches();
-    draw();                       /* the board background, and every erase stroke, follows the theme */
+
+  $("undo").addEventListener("click", function () {
+    var id = myStrokes.pop();
+    if (!id) return;
+    applyLocal({ t: "undo", id: id, b: doc.board });
+    send({ t: "undo", id: id, b: doc.board });
+    draw();
+    autosave();
+  });
+  $("undoAny").addEventListener("click", function () {
+    undoAny = !undoAny;
+    this.setAttribute("aria-pressed", String(undoAny));
+    toast(T("undoAny") + ": " + (undoAny ? "on" : "off"));
+  });
+  $("clear").addEventListener("click", function () {
+    if (!confirm("Clear the board for everyone?")) return;
+    sceneName = null;
+    applyLocal({ t: "clear", b: doc.board });
+    myStrokes = [];
+    send({ t: "clear", b: doc.board });
+    draw();
+    autosave();
   });
 
-  /* ---------- demo scenes ----------
-   * A board with something on it, drawn by the engine's own scene data, so the
-   * landing page can show the real app working and a screenshot is not an empty
-   * canvas. Never sent to a room: these strokes are not mine. */
+  function download(name, type, data) {
+    var blob = new Blob([data], { type: type });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+  function stamp() { return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-"); }
+
+  $("png").addEventListener("click", function () {
+    cv.toBlob(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "chalk-" + stamp() + ".png";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }, "image/png");
+  });
+  $("svg").addEventListener("click", function () {
+    download("chalk-" + stamp() + ".svg", "image/svg+xml",
+      Chalk.toSVG(doc, W, H, { background: background, dark: isDark() }));
+  });
+  $("save").addEventListener("click", function () {
+    download("chalk-" + doc.board + "-" + stamp() + ".json", "application/json", Chalk.toJSON(doc));
+    toast(T("saved"));
+  });
+  $("openBtn").addEventListener("click", function () { $("file").click(); });
+  $("file").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var loaded = Chalk.fromJSON(String(reader.result));
+      doc.strokes = loaded.strokes;
+      doc.notes = loaded.notes;
+      doc.rev++;
+      if (client) send({ t: "snapshot", b: doc.board, doc: Chalk.toJSON(doc) });
+      draw();
+      toast(T("opened"));
+    };
+    reader.readAsText(f);
+    this.value = "";
+  });
+  $("print").addEventListener("click", function () {
+    var w = window.open("", "_blank");
+    if (!w) return;
+    w.document.write('<title>Chalk — ' + doc.board + '</title>' +
+      '<style>@page{margin:12mm}body{margin:0}svg{width:100%;height:auto}</style>' +
+      Chalk.toSVG(doc, W, H, { background: background, dark: false }));
+    w.document.close();
+    setTimeout(function () { w.focus(); w.print(); }, 250);
+  });
+
+  /* ---------- record and replay ---------- */
+  $("record").addEventListener("click", function () {
+    recording = !recording;
+    this.setAttribute("aria-pressed", String(recording));
+    if (recording) { log = []; toast(T("recording")); }
+  });
+  $("replay").addEventListener("click", function () {
+    if (!log.length || replaying) return;
+    replaying = true;
+    sceneName = null;
+    Chalk.clear(doc);
+    draw();
+    var i = 0;
+    (function step() {
+      if (i >= log.length) { replaying = false; autosave(); return; }
+      var item = log[i++];
+      Chalk.apply(doc, item.msg, { w: W, h: H });
+      draw();
+      /* the recorded gaps, squeezed so a five-minute lesson plays in a minute */
+      var gap = i < log.length ? log[i].at - item.at : 0;
+      setTimeout(step, Math.min(120, Math.max(8, gap / 4)));
+    })();
+  });
+
+  /* ---------- autosave ---------- */
+  var autosaveTimer = null;
+  function autosave() {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(function () {
+      try {
+        Loom.storage.put("chalk", "boards", doc.board, { json: Chalk.toJSON(doc), at: Date.now() });
+      } catch (e) {}
+    }, 700);
+  }
+  function restore() {
+    try {
+      Loom.storage.getItem("chalk", "boards", doc.board).then(function (rec) {
+        if (!rec || !rec.json) return;
+        if (Chalk.stats(doc).strokes || Chalk.stats(doc).notes) return;   /* do not clobber a live board */
+        var back = Chalk.fromJSON(rec.json);
+        if (!Chalk.stats(back).strokes && !Chalk.stats(back).notes) return;
+        doc.strokes = back.strokes;
+        doc.notes = back.notes;
+        draw();
+        toast(T("restored"));
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
+  /* ---------- boards ---------- */
+  function switchBoard(name) {
+    var next = Chalk.normBoard(name);
+    if (next === doc.board) return;
+    autosave();
+    doc = Chalk.newDoc(next);
+    myStrokes = [];
+    sceneName = null;
+    Loom.storage.set("chalk:board", next);
+    buildSelects();
+    if (client) { leave(); join(); }
+    draw();
+    restore();
+  }
+  $("boardSel").addEventListener("change", function () { switchBoard(this.value); });
+  $("newBoard").addEventListener("click", function () {
+    var name = prompt("Board name", "board-" + (boards().length + 1));
+    if (!name) return;
+    var clean = Chalk.normBoard(name);
+    var list = boards();
+    if (list.indexOf(clean) === -1) { list.push(clean); Loom.storage.set("chalk:boards", list); }
+    switchBoard(clean);
+  });
+
+  /* ---------- the room ---------- */
+  function join(url, quiet) {
+    if (client) return;
+    url = (url || $("host").value).trim().replace(/\/+$/, "");
+    if (!url) return;
+    $("host").value = url;
+    Loom.storage.set("chalk:host", url);
+    Loom.storage.set("chalk:name", $("name").value);
+    setStatus(T("connecting"));
+    $("dot").className = "dot";
+
+    client = Lan.client({
+      url: url,
+      board: doc.board,
+      onOpen: function (h) {
+        $("dot").className = "dot on";
+        setStatus(T("online") + (h && h.room ? " · " + h.room : ""));
+        $("join").hidden = true; $("leave").hidden = false;
+        if (h && h.code) { $("code").textContent = h.code; $("code").hidden = false; }
+        Loom.a11y.announce(T("joined"));
+        /* anything drawn while the room was away goes now, in order */
+        var out = pending.splice(0, pending.length);
+        out.forEach(function (m) { try { client.send(m).catch(function () {}); } catch (e) {} });
+      },
+      onSnapshot: function (s) {
+        if (!s || !s.doc) return;
+        Chalk.apply(doc, { t: "snapshot", doc: s.doc }, { w: W, h: H });
+        draw();
+      },
+      onMessage: function (m) {
+        if (!m) return;
+        if (m.t === "cursor") {
+          var c = Chalk.normCursor(m, { w: W, h: H });
+          if (c) { cursors[c.author] = c; draw(); }
+          return;
+        }
+        if (m.id && myStrokes.indexOf(m.id) !== -1) return;   /* my own echo */
+        Chalk.apply(doc, m, { w: W, h: H });
+        note(m);
+        draw();
+        autosave();
+      },
+      onError: function () { $("dot").className = "dot"; setStatus(T("offline")); }
+    });
+    if (!quiet) toast(T("connecting"));
+  }
+  function leave() {
+    if (!client) return;
+    client.close(); client = null;
+    $("dot").className = "dot";
+    setStatus(T("offline"));
+    $("code").hidden = true;
+    $("join").hidden = false; $("leave").hidden = true;
+  }
+  $("join").addEventListener("click", function () { join(); });
+  $("leave").addEventListener("click", leave);
+
+  $("find").addEventListener("click", function () {
+    var btn = this;
+    btn.disabled = true;
+    setStatus(T("connecting"));
+    Lan.scan({
+      onFound: function (h) {
+        $("host").value = h.url;
+        join(h.url, true);
+        toast(T("found") + ": " + (h.room || h.url));
+      }
+    }).then(function (found) {
+      btn.disabled = false;
+      if (!found.length) { setStatus(T("offline")); toast(T("none")); }
+    }).catch(function () { btn.disabled = false; toast(T("none")); });
+  });
+
+  $("qrBtn").addEventListener("click", function () {
+    var panel = $("qrPanel");
+    if (panel.style.display === "block") { panel.style.display = "none"; return; }
+    var url = (client && client.url) || $("host").value.trim() || Lan.hostUrl(8080);
+    try {
+      $("qrSvg").innerHTML = QR.svg(url, { scale: 4, quiet: 2 });
+      $("qrCap").textContent = url;
+      panel.style.display = "block";
+    } catch (e) { toast(e.message); }
+  });
+
+  /* ---------- demo scenes ---------- */
   var sceneName = null;
-  /* Scenes are laid out for a wide board. On a tall one, draw them into a 16:10
-   * box in the middle instead of stretching the drawing down the page — and lay
-   * them out again whenever the board changes size, because a board in a page
-   * can be measured before its frame has settled. */
   function sceneDoc(name) {
     var vh = Math.max(1, Math.round(Math.min(H, W * 0.62)));
     var oy = Math.max(0, Math.round((H - vh) / 2));
     var msgs = Chalk.scene(name, W, vh).map(function (m) {
-      if (!m.points) return m;
-      return { t: m.t, id: m.id, author: m.author, color: m.color, size: m.size,
-        points: m.points.map(function (p) { return { x: p.x, y: p.y + oy }; }) };
+      if (!m.points || !m.points.length) return m;
+      return {
+        t: m.t, id: m.id, author: m.author, color: m.color, size: m.size, nib: m.nib, tool: m.tool,
+        x: m.x, y: m.y + oy, text: m.text,
+        points: m.points.map(function (p) { return { x: p.x, y: p.y + oy }; })
+      };
     });
-    return Chalk.replay(msgs, { w: W, h: H });
+    return Chalk.replay(msgs, { w: W, h: H }, doc.board);
   }
   function loadScene(name) {
     if (!Chalk.scenes[name]) return;
@@ -343,11 +987,15 @@
     doc = sceneDoc(name);
     myStrokes = [];
     draw();
-    if (name === "join") { $("host").focus(); Loom.a11y.announce("Enter the room host's address to join"); }
+    if (name === "join") { $("host").focus(); }
     else Loom.a11y.announce("Demo board: " + name);
   }
+
+  /* ---------- boot ---------- */
   window.addEventListener("resize", resize);
   applyStrings();
+  setTool(tool);
+  buildSwatches();
   resize();
   paintTheme();
   $("stampEngine").textContent = Chalk.version;
@@ -356,11 +1004,25 @@
 
   var wanted = new URLSearchParams(location.search).get("demo");
   if (wanted && Chalk.scenes[wanted]) loadScene(wanted);
+
+  restore();
+
+  /* Served by the host? Then the room is this page's own origin — join it
+   * without being asked, which is what scanning the QR gets you. */
+  if (location.protocol === "http:" || location.protocol === "https:") {
+    if (location.port && location.port !== "80" && location.port !== "443") {
+      Lan.health(location.origin, 900).then(function (h) {
+        if (h && h.ok) { $("host").value = location.origin; join(location.origin, true); }
+      });
+    }
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").then(function (reg) {
+        if (reg && reg.update) reg.update();
+      }).catch(function () {});
+    }
+  }
 })();
 </script>
-
-<style>:focus-visible{outline:2px solid currentColor;outline-offset:2px}</style>
-
 
 <script>
 window.__smokeTest = function () {
@@ -368,15 +1030,20 @@ window.__smokeTest = function () {
   ok("the document rendered", !!document.body && document.body.children.length > 0);
   ok("a heading is present", !!document.querySelector("h1, h2"));
   ok("no script threw during load", !window.__bootError);
-  var kits = ["Export","Loom","CryptoKit","Case","Search","Srs","Game","Art","Audio","Ml","UI","Lan","Astro"];
+  var kits = ["Loom", "Lan", "Chalk", "QR"];
   var found = kits.filter(function (k) { return window[k]; });
-  ok("at least one kit is loaded (" + (found.join(", ") || "none") + ")", found.length > 0);
+  ok("every kit is loaded (" + found.join(", ") + ")", found.length === kits.length);
   try { localStorage.setItem("__smoke","1"); ok("storage works", localStorage.getItem("__smoke") === "1"); localStorage.removeItem("__smoke"); } catch (e) { ok("storage works", false); }
+  ok("the engine has scenes", !!(window.Chalk && Chalk.scene && Chalk.scene("lesson", 400, 300).length));
+  ok("the QR encoder makes a matrix", !!(window.QR && QR.make("CHALK").modules.length));
   console.log(out.join("\n"));
   if (location.search.indexOf("test") >= 0) { var d = document.createElement("pre"); d.textContent = out.join("\n"); d.style.cssText = "position:fixed;left:0;right:0;bottom:0;background:#111;color:#eee;padding:12px;font:12px ui-monospace,monospace;z-index:99999;max-height:40vh;overflow:auto;white-space:pre-wrap"; document.body.appendChild(d); }
   return out;
 };
 window.addEventListener("error", function () { window.__bootError = true; });
+if (location.search.indexOf("test") !== -1) {
+  try { window.__smokeTest(); } catch (e) { console.log("smoke test threw: " + e.message); }
+}
 </script>
 <style id="app-theme">
   /* chalk-lan - its own palette, type and shape.
