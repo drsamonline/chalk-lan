@@ -175,9 +175,21 @@ function createHost(opts) {
   return {
     room: room,
     code: code,
+    /* Resolves with the bound port, or rejects with the listen error (EADDRINUSE
+     * being the one that happens in real rooms) so the caller can say something
+     * useful instead of printing a stack trace at the person starting a lesson. */
     listen: function (port) {
-      return new Promise(function (resolve) {
-        server.listen(port || 0, function () { resolve(server.address().port); });
+      return new Promise(function (resolve, reject) {
+        function onError(err) {
+          server.removeListener("error", onError);
+          reject(err);
+        }
+        server.once("error", onError);
+        server.listen(port || 0, function () {
+          server.removeListener("error", onError);
+          server.on("error", function () { /* keep serving if a socket complains */ });
+          resolve(server.address().port);
+        });
       });
     },
     broadcast: broadcast,

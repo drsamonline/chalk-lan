@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.1 — 2026-11-01
+
+- **A busy port no longer kills the room.** `node host/room.js` used to die with an unhandled
+  `EADDRINUSE` stack trace if something already held 8080 — the commonest way a room fails to open, and
+  the least useful thing to show the person starting a lesson. The host now tries the next nine ports,
+  says which one it moved to, and exits with a sentence (not a trace) if they are all taken. Found in the
+  2.0.0 audit, along with the confirmation that both QR paths — the terminal and the in-app panel —
+  decode back to the address they claim.
+
 ## 2.0.0 — 2026-11-01
 
 Every enhancement the README listed is now built, and none of them costs a

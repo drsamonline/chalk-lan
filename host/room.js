@@ -46,7 +46,25 @@ function lanAddresses() {
     snapshot: true,
     static: path.join(__dirname, "..", "docs", "play")
   });
-  const bound = await host.listen(port);
+  /* A busy port is the commonest way a room fails to open, so try the next few
+   * and say what happened rather than dying on EADDRINUSE. */
+  let bound = null;
+  for (let p = port; p < port + 10 && bound === null; p++) {
+    try {
+      bound = await host.listen(p);
+      if (p !== port) console.log("  port " + port + " was busy — using " + p + " instead.");
+    } catch (err) {
+      if (err.code !== "EADDRINUSE") {
+        console.error("  could not start the room: " + err.message);
+        process.exit(1);
+      }
+    }
+  }
+  if (bound === null) {
+    console.error("  ports " + port + "–" + (port + 9) + " are all busy. " +
+      "Pick another with --port 9090.");
+    process.exit(1);
+  }
   const addrs = lanAddresses();
   const first = addrs.length ? "http://" + addrs[0].address + ":" + bound : "http://localhost:" + bound;
 

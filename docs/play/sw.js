@@ -11,7 +11,7 @@
  */
 "use strict";
 
-const CACHE = "chalk-v2.0.0";
+const CACHE = "chalk-v2.0.1";
 const SHELL = [
   "./",
   "index.html",
