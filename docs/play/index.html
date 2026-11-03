@@ -52,6 +52,12 @@
          border-radius:999px;padding:8px 16px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
   #toast.show{opacity:1}
   @media (max-width:640px){ .actions button{font-size:12px;padding:6px 8px} }
+
+  /* The board is the page. The controls are a strip above it, not a second page. */
+  #board, .board, canvas#board { height: calc(100vh - 430px) !important; min-height: 420px !important; }
+  header .row, .controls, .toolbar { gap: 6px !important; }
+  header button, header select, header input { padding: 5px 9px !important; font-size: 13px !important; }
+  @media (max-width: 700px) { #board, .board, canvas#board { height: 60vh !important; } }
 </style>
 </head>
 <body>
@@ -1224,8 +1230,8 @@ if (location.search.indexOf("test") !== -1) {
   /* chalk-lan - its own palette, type and shape.
      Keyed on data-theme so the in-app theme toggle still works; !important is
      required because web-kit sets these as inline styles on <html>. */
-  html[data-theme="dark"]{--bg:#070d1a !important;--card:#09132a !important;--ink:#f0f4fe !important;--mut:#5d7dc4 !important;--line:#0d1c40 !important;--acc:#628ff1 !important;}
-  html[data-theme="light"]{--bg:#f5f8fe !important;--card:#ffffff !important;--ink:#0e1930 !important;--mut:#3863c1 !important;--line:#e0e9fc !important;--acc:#1e51c1 !important;}
+  html[data-theme="dark"]{--bg:#0f2a23 !important;--card:#14332b !important;--ink:#f2f0e2 !important;--mut:#a9bdb4 !important;--line:#25463c !important;--acc:#7ee0b0 !important;}
+  html[data-theme="light"]{--bg:#f2eee1 !important;--card:#fbf8ef !important;--ink:#16241f !important;--mut:#5d6b62 !important;--line:#ded6c2 !important;--acc:#1d6b4d !important;}
   html,body{font-family:"SF Pro Rounded", ui-rounded, "Nunito", system-ui, sans-serif !important;letter-spacing:0 !important;
     background-image:radial-gradient(820px 360px at 50% -170px,
       color-mix(in srgb, var(--acc) 16%, transparent), transparent 72%) !important;
