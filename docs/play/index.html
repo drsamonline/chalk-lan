@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
-  :root{--bg:#0f1115;--card:#171a21;--ink:#e7e9ee;--mut:#9aa3b2;--line:#252a34;--acc:#22c55e}
+  :root{--bg:#f2eee1;--card:#fbf8ef;--ink:#16241f;--mut:#5d6b62;--line:#ded6c2;--acc:#1d6b4d}
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column}
@@ -131,8 +131,8 @@
                  line-height:1;background:transparent;border:1px solid var(--line,CanvasText);
                  border-radius:.4rem;padding:.2rem .5rem;cursor:pointer;color:inherit}
 </style>
-<button class="support-open" type="button" id="support-open"
-        aria-haspopup="dialog" aria-controls="support-dialog">Support</button>
+<div style="display:flex;justify-content:flex-end;margin:6px 0 0"><button class="support-open" type="button" id="support-open"
+        aria-haspopup="dialog" aria-controls="support-dialog">Support</button></div>
 <dialog class="support-dialog" id="support-dialog" aria-label="Support this work">
   <button class="support-close" type="button" id="support-close" aria-label="Close">×</button>
   <!-- support:block:start -->
