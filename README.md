@@ -1,5 +1,7 @@
 # Chalk
 
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)](LICENSE)
+
 <p>
   <a href="https://drsamonline.github.io/chalk-lan/"><img alt="live: online" src="docs/assets/badge-live.svg"></a>
   <img alt="tests: 127 passing" src="docs/assets/badge-tests.svg">
