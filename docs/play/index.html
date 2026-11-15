@@ -105,6 +105,14 @@
     header #roomRow { max-width: 55vw; }
   }
 </style>
+<style>
+/* ---- a11y: the rule each label needs, chosen against its measured surface -- */
+[data-theme="light"] button.ghost{color:#0b1020!important}
+[data-theme="dark"] button.support-copy{color:#0b1020!important}   /* 2.25 -> 18.62:1 on rgb(255,253,248) */
+[data-theme="light"] button{color:#ffffff!important}   /* 2.65 -> 6.44:1 on rgb(29,107,77) */
+[data-theme="light"] button.support-open{color:#ffffff!important}   /* 2.5 -> 6.44:1 on rgb(29,107,77) */
+[data-theme="dark"] button.support-open{color:#0b1020!important}   /* 1.39 -> 11.88:1 on rgb(126,224,176) */
+</style>
 </head>
 <body>
 <header>
